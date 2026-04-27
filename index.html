@@ -720,6 +720,18 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 </head>
 <body>
 <div id="game-container">
+  <div id="midbar">
+    <div id="combo-display"></div>
+    <button id="pause-btn" class="icon-btn" title="暂停">⏸</button>
+  </div>
+
+  <div id="leaderboard-overlay"></div>
+  <div id="milestone-flash"></div>
+  <div id="milestone-text"></div>
+  <canvas id="board"></canvas>
+  <div id="frenzy-label">🔥 FRENZY ×2</div>
+  <div id="level-banner"></div>
+
   <div id="topbar">
     <div class="hud-card" id="level-card">
       <div class="label">关卡目标</div>
@@ -738,18 +750,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
       <div class="value-sub" id="retry-display">复活 0 · 洗牌 0</div>
     </div>
   </div>
-
-  <div id="midbar">
-    <div id="combo-display"></div>
-    <button id="pause-btn" class="icon-btn" title="暂停">⏸</button>
-  </div>
-
-  <div id="leaderboard-overlay"></div>
-  <div id="milestone-flash"></div>
-  <div id="milestone-text"></div>
-  <canvas id="board"></canvas>
-  <div id="frenzy-label">🔥 FRENZY ×2</div>
-  <div id="level-banner"></div>
 
   <div id="abilities-panel">
     <div id="abilities-head">
@@ -1576,13 +1576,8 @@ function renderBestRecord() {
 }
 
 function initSize() {
-  const maxW = Math.min(window.innerWidth - 14, 560);
-  const vh = window.visualViewport?.height || window.innerHeight;
-  const topbar = document.getElementById('topbar');
-  const midbar = document.getElementById('midbar');
-  const uiH = (topbar ? topbar.offsetHeight : 0) + (midbar ? midbar.offsetHeight : 0) + 16;
-  const maxH = vh - uiH;
-  const size = Math.max(280, Math.min(maxW, maxH));
+  const maxW = Math.min(window.innerWidth - 10, 560);
+  const size = maxW; // 棋盘优先撑满宽度
   CELL = Math.floor(size / COLS);
   PADDING = Math.floor(CELL * 0.06);
   const dpr = window.devicePixelRatio || 1;
