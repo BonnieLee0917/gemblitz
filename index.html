@@ -398,15 +398,16 @@ canvas {
   color: #bfc6ef;
 }
 @media (max-width: 640px) {
-  #game-container { width: min(100vw - 14px, 520px); gap: 10px; }
+  #game-container { width: min(100vw - 14px, 520px); gap: 6px; }
   #topbar { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-  .hud-card { min-height: 48px; padding: 8px 10px; }
-  .hud-card .label { font-size: 9px; margin-bottom: 3px; }
-  .hud-card .value-strong { font-size: 18px; }
-  .hud-card .value-sub { font-size: 10px; margin-top: 3px; }
-  .progress-shell { height: 6px; margin-top: 6px; }
-  #midbar { grid-template-columns: 1fr auto auto; }
-  .icon-btn { height: 44px; min-width: 44px; }
+  .hud-card { min-height: 44px; padding: 6px 8px; }
+  .hud-card .label { font-size: 9px; margin-bottom: 2px; }
+  .hud-card .value-strong { font-size: 16px; }
+  .hud-card .value-sub { font-size: 10px; margin-top: 2px; }
+  .progress-shell { height: 5px; margin-top: 4px; }
+  #midbar { grid-template-columns: 1fr auto auto auto; gap: 6px; }
+  #combo-display { min-height: 32px; font-size: 13px; padding: 0 8px; }
+  .icon-btn { height: 36px; min-width: 36px; font-size: 14px; padding: 0 8px; }
   .ability-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .ability-card { padding: 10px 8px 8px; border-radius: 14px; }
   .ability-card .card-icon { width: 32px; height: 32px; font-size: 18px; margin-bottom: 6px; border-radius: 10px; }
@@ -740,6 +741,12 @@ html, body { overflow-x: hidden; max-width: 100vw; }
     <button id="pause-btn" class="icon-btn" title="暂停">⏸</button>
   </div>
 
+  <div id="leaderboard-overlay"></div>
+  <div id="milestone-flash"></div>
+  <div id="milestone-text"></div>
+  <canvas id="board"></canvas>
+  <div id="frenzy-label">🔥 FRENZY ×2</div>
+  <div id="level-banner"></div>
 
   <div id="abilities-panel">
     <div id="abilities-head">
@@ -748,13 +755,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
     </div>
     <div id="abilities-list"><div class="ability-empty">还没有能力，先打通第 1 关试试。</div></div>
   </div>
-
-  <div id="leaderboard-overlay"></div>
-  <div id="milestone-flash"></div>
-  <div id="milestone-text"></div>
-  <canvas id="board"></canvas>
-  <div id="frenzy-label">🔥 FRENZY ×2</div>
-  <div id="level-banner"></div>
 
   <div id="overlay">
     <h1>💎 宝石闪击</h1>
