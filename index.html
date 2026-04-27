@@ -2939,7 +2939,7 @@ function setupRun() {
   abilityTriggers = 0;
   canvas.classList.remove('frenzy-active');
   frenzyLabel.style.display = 'none';
-  comboBarFill.style.width = '0%';
+  if (comboBarFill) comboBarFill.style.width = '0%';
 }
 function startLevel(level, isRetry = false) {
   ensureAudio();
