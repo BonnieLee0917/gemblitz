@@ -2623,6 +2623,8 @@ function getRandomAbilityChoices(count = 3) {
     if (tier === 'legendary') weight = 1;
     else if (tier === 'epic') weight = 3;
     else weight = 6;
+    // 第二次机会出现概率降低
+    if (def.key === 'secondChance') weight = 2;
     // Already owned? slightly reduce weight to encourage variety
     if (state.abilities[def.key] > 0) weight = Math.max(1, weight - 1);
     // infiniteCombo can't stack
@@ -2649,6 +2651,7 @@ function getRandomAbilityChoices(count = 3) {
   return choices;
 }
 function renderAbilitySelection() {
+  pendingAbilityKey = null;
   const mount = document.getElementById('ability-select');
   if (!mount) return;
   const choices = getRandomAbilityChoices(3);
@@ -2706,14 +2709,43 @@ function showOverlay(title, subtitle, middle = '', actions = '') {
   `;
   overlay.style.display = 'flex';
 }
+let pendingAbilityKey = null;
 window.pickAbility = function(key) {
   const def = ABILITY_DEFS[key];
   if (!def || !state.awaitingAbility) return;
-  def.onGain();
-  playAbilityPick();
-  state.level++;
-  state.awaitingAbility = false;
-  startLevel(state.level);
+  if (pendingAbilityKey === key) {
+    // 第二次点击确认
+    def.onGain();
+    playAbilityPick();
+    pendingAbilityKey = null;
+    state.level++;
+    state.awaitingAbility = false;
+    startLevel(state.level);
+  } else {
+    // 第一次点击，高亮并提示确认
+    pendingAbilityKey = key;
+    // 移除其他卡片的高亮
+    document.querySelectorAll('.ability-card').forEach(card => {
+      card.style.outline = '';
+      card.style.outlineOffset = '';
+      const confirmTag = card.querySelector('.confirm-tag');
+      if (confirmTag) confirmTag.remove();
+    });
+    // 高亮选中的卡片
+    const cards = document.querySelectorAll('.ability-card');
+    cards.forEach(card => {
+      if (card.getAttribute('onclick')?.includes(key)) {
+        card.style.outline = '2px solid #ffd76a';
+        card.style.outlineOffset = '2px';
+        const tag = document.createElement('div');
+        tag.className = 'confirm-tag';
+        tag.style.cssText = 'margin-top:8px;font-size:13px;color:#ffd76a;font-weight:800;text-align:center;';
+        tag.textContent = '👆 再点一次确认';
+        card.appendChild(tag);
+      }
+    });
+    playSelect();
+  }
 };
 window.restartCurrentLevel = function() {
   if (currentOverlayMode !== 'retry') return;
@@ -3071,6 +3103,16 @@ function startGemRain() {
       playBigMatch();
       abilityTriggers++;
       draw();
+      // 触发连锁检测
+      setTimeout(async () => {
+        if (!state.gameRunning || state.paused || animating || state.awaitingAbility) return;
+        combo = 0;
+        const matchData = findMatchData();
+        if (matchData.matched.size > 0) {
+          await removeAndRefill(matchData);
+          await processMatches();
+        }
+      }, 300);
     }
   }, interval);
 }
