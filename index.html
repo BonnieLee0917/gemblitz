@@ -629,6 +629,66 @@ canvas {
   padding: 40px 0;
   font-size: 16px;
 }
+
+/* === ONLINE LEADERBOARD === */
+.lb-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.lb-tab {
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: #9aa3d7;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lb-tab.active {
+  background: linear-gradient(135deg, #ffd76a, #ffac6a);
+  color: #11152e;
+  border-color: transparent;
+}
+.lb-loading {
+  text-align: center;
+  color: #9aa3d7;
+  padding: 30px 0;
+}
+.name-input-row {
+  display: flex;
+  gap: 8px;
+  margin: 16px auto;
+  max-width: 300px;
+}
+.name-input-row input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.08);
+  color: #f4f5ff;
+  font-size: 15px;
+  outline: none;
+}
+.name-input-row input::placeholder { color: #666; }
+.name-input-row button {
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #ffd76a, #ffac6a);
+  color: #11152e;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
+.lb-you { color: #ffd76a !important; }
+.lb-rank-badge {
+  display: inline-block;
+  min-width: 24px;
+  text-align: center;
+}
 </style>
 </head>
 <body>
@@ -689,6 +749,7 @@ canvas {
 </div>
 
 <script>
+
 // ===== Audio Engine (Web Audio API) =====
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
@@ -2906,6 +2967,112 @@ function startGemRain() {
   }, interval);
 }
 
+
+// === LEADERBOARD (LOCAL + ONLINE) ===
+const LB_KEY = 'gemBlitzLeaderboard';
+const LB_MAX = 20;
+const LB_API = 'https://gemblitz-leaderboard.bonnielee104.workers.dev/api/leaderboard';
+const PLAYER_NAME_KEY = 'gemBlitzPlayerName';
+let currentLbTab = 'online';
+let lastSubmittedRank = -1;
+let pendingScore = null;
+
+function getPlayerName() { return localStorage.getItem(PLAYER_NAME_KEY) || ''; }
+function setPlayerName(name) { localStorage.setItem(PLAYER_NAME_KEY, name.slice(0, 16)); }
+
+function loadLeaderboard() {
+  try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; } catch { return []; }
+}
+
+function saveToLeaderboard(entry) {
+  const lb = loadLeaderboard();
+  entry.date = new Date().toLocaleDateString('zh-CN');
+  lb.push(entry);
+  lb.sort((a, b) => b.totalScore - a.totalScore);
+  if (lb.length > LB_MAX) lb.length = LB_MAX;
+  localStorage.setItem(LB_KEY, JSON.stringify(lb));
+  pendingScore = entry;
+  return lb.indexOf(entry);
+}
+
+async function submitOnlineScore(name, entry) {
+  try {
+    const r = await fetch(LB_API, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ name, totalScore: entry.totalScore, level: entry.level, maxCombo: entry.maxCombo })
+    });
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function fetchOnlineLeaderboard() {
+  try { const r = await fetch(LB_API); return await r.json(); } catch { return null; }
+}
+
+function switchLbTab(tab) { currentLbTab = tab; showLeaderboard(lastSubmittedRank); }
+window.switchLbTab = switchLbTab;
+
+async function showLeaderboard(highlightIdx) {
+  if (highlightIdx === undefined) highlightIdx = -1;
+  lastSubmittedRank = highlightIdx;
+  const ov = document.getElementById('leaderboard-overlay');
+  const tabs = `<div class="lb-tabs">
+    <button class="lb-tab ${currentLbTab==='online'?'active':''}" onclick="switchLbTab('online')">🌐 全球</button>
+    <button class="lb-tab ${currentLbTab==='local'?'active':''}" onclick="switchLbTab('local')">📱 本地</button>
+  </div>`;
+
+  if (currentLbTab === 'online') {
+    ov.innerHTML = `<div class="lb-container"><div class="lb-title">🏆 排行榜</div>${tabs}<div class="lb-loading">加载中...</div><div style="text-align:center"><button class="lb-close" onclick="hideLeaderboard()">关闭</button></div></div>`;
+    ov.style.display = 'flex';
+
+    // Auto-submit if we have a pending score and a name
+    const playerName = getPlayerName();
+    if (pendingScore && playerName) {
+      const result = await submitOnlineScore(playerName, pendingScore);
+      pendingScore = null;
+      if (result && result.rank) highlightIdx = result.rank - 1;
+    }
+
+    const data = await fetchOnlineLeaderboard();
+    if (!data) { ov.querySelector('.lb-loading').textContent = '网络错误'; return; }
+
+    let namePrompt = '';
+    if (pendingScore && !playerName) {
+      namePrompt = `<div class="name-input-row"><input id="lb-name-input" type="text" placeholder="输入你的名字" maxlength="16" /><button onclick="submitName()">提交</button></div>`;
+    }
+
+    const rows = data.map((e, i) => {
+      const isYou = playerName && e.name === playerName;
+      return `<tr class="${isYou?'highlight':''}"><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td${isYou?' class="lb-you"':''}>${e.name}${isYou?' (你)':''}</td><td>${e.totalScore.toLocaleString()}</td><td>第${e.level}关</td><td>${e.maxCombo}x</td></tr>`;
+    }).join('');
+
+    ov.innerHTML = `<div class="lb-container"><div class="lb-title">🏆 排行榜</div>${tabs}${namePrompt}${data.length===0?'<div class="lb-empty">成为第一个上榜的人！</div>':`<table class="lb-table"><thead><tr><th>#</th><th>玩家</th><th>总分</th><th>最远</th><th>连击</th></tr></thead><tbody>${rows}</tbody></table>`}<div style="text-align:center"><button class="lb-close" onclick="hideLeaderboard()">关闭</button></div></div>`;
+  } else {
+    const lb = loadLeaderboard();
+    const rows = lb.map((e, i) => `<tr class="${i===highlightIdx?'highlight':''}"><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td>${e.totalScore.toLocaleString()}</td><td>第${e.level}关</td><td>${e.maxCombo}x</td><td>${e.date||''}</td></tr>`).join('');
+    ov.innerHTML = `<div class="lb-container"><div class="lb-title">🏆 排行榜</div>${tabs}${lb.length===0?'<div class="lb-empty">还没有记录</div>':`<table class="lb-table"><thead><tr><th>#</th><th>总分</th><th>最远</th><th>连击</th><th>日期</th></tr></thead><tbody>${rows}</tbody></table>`}<div style="text-align:center"><button class="lb-close" onclick="hideLeaderboard()">关闭</button></div></div>`;
+  }
+  ov.style.display = 'flex';
+}
+
+async function submitName() {
+  const input = document.getElementById('lb-name-input');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) { input.style.borderColor = '#ff4444'; return; }
+  setPlayerName(name);
+  if (pendingScore) {
+    const result = await submitOnlineScore(name, pendingScore);
+    pendingScore = null;
+    showLeaderboard(result ? result.rank - 1 : -1);
+  }
+}
+window.submitName = submitName;
+
+function hideLeaderboard() { document.getElementById('leaderboard-overlay').style.display = 'none'; }
+window.showLeaderboard = showLeaderboard;
+window.hideLeaderboard = hideLeaderboard;
+
 function gameLoop() {
   if (!state.paused) updateParticles();
   draw();
@@ -2920,6 +3087,7 @@ refillNoInitialMatches();
 updateHUD();
 draw();
 gameLoop();
+
 </script>
 </body>
 </html>
