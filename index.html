@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>💎 宝石闪击：Roguelike</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -395,9 +395,12 @@ canvas {
   .hud-card { min-height: 60px; }
   .ability-grid { grid-template-columns: 1fr; }
   .ability-card .card-desc { min-height: auto; }
-  .overlay-btn { width: 100%; }
+  .overlay-btn { width: 100%; min-height: 44px; }
   .overlay-actions { width: 100%; }
+  canvas { max-width: 100vw !important; }
+  #leaderboard-overlay { max-height: 90vh; max-width: 95vw; }
 }
+html, body { overflow-x: hidden; max-width: 100vw; }
 
 /* === COMBO BAR === */
 #combo-bar-shell {
@@ -1195,12 +1198,7 @@ const ABILITY_DEFS = {
     tier: 'epic', minLevel: 4,
     onGain() { state.abilities.midas++; }
   },
-  timeFreeze: {
-    key: 'timeFreeze', icon: '❄️', name: '时间冻结', tag: '史诗',
-    description: '连击期间时间暂停。叠加后冻结时间延长。',
-    tier: 'epic', minLevel: 5,
-    onGain() { state.abilities.timeFreeze++; }
-  },
+
   critStrike: {
     key: 'critStrike', icon: '⚔️', name: '暴击', tag: '史诗',
     description: '每次消除有20%概率得分翻倍。叠加提高暴击率和倍率。',
@@ -1418,7 +1416,6 @@ function createAbilityState() {
     magnetPull: 0,
     cascade: 0,
     midas: 0,
-    timeFreeze: 0,
     critStrike: 0,
     vortex: 0,
     supernova: 0,
@@ -2491,8 +2488,6 @@ function startTimer() {
   clearInterval(timerInterval);
   timerInterval = setInterval(async () => {
     if (state.paused || state.awaitingAbility || !state.gameRunning) return;
-    // Time freeze: don't tick during combos
-    if (state.abilities.timeFreeze > 0 && combo > 0) return;
     state.timeLeft -= 0.1;
     updateHUD();
     if (state.timeLeft <= 0) {
@@ -2786,10 +2781,33 @@ function endRun(clearedAll) {
       <button class="overlay-btn" onclick="startGame()">再来一局</button>
       <button class="overlay-btn secondary" onclick="showMainMenu()">返回菜单</button>
       <button class="overlay-btn secondary" onclick="showLeaderboard(${lbRank})">🏆 排行榜</button>
+      <button class="overlay-btn secondary" onclick="showChangelog()">📋 更新记录</button>
     </div>`
   );
   currentOverlayMode = 'gameover';
 }
+window.showChangelog = function() {
+  overlay.innerHTML = `
+    <h1>\ud83d\udccb \u66f4\u65b0\u8bb0\u5f55</h1>
+    <div style="text-align:left;max-width:460px;width:100%;margin:0 auto;line-height:1.8;color:#bfc6ef;font-size:15px;">
+      <h3 style="color:#ffb05a;margin:16px 0 6px;">v1.1 <span style="font-weight:normal;font-size:13px;color:#8e95c3;">(2026-04-27)</span></h3>
+      <ul style="padding-left:20px;margin:0;">
+        <li>\u5220\u9664\u201c\u65f6\u95f4\u51bb\u7ed3\u201d\u80fd\u529b\uff08\u592a OP\uff09</li>
+        <li>\u589e\u52a0\u66f4\u65b0\u8bb0\u5f55\u9875\u9762</li>
+        <li>\u79fb\u52a8\u7aef\u9002\u914d\u4f18\u5316</li>
+      </ul>
+      <h3 style="color:#ffb05a;margin:16px 0 6px;">v1.0 <span style="font-weight:normal;font-size:13px;color:#8e95c3;">(2026-04-27)</span></h3>
+      <ul style="padding-left:20px;margin:0;">
+        <li>\ud83c\udf89 \u6b63\u5f0f\u4e0a\u7ebf\uff01Roguelike \u6d88\u6d88\u4e50\uff0c45 \u79d2\u4e00\u5173\uff0c\u80fd\u529b\u53e0\u52a0</li>
+      </ul>
+    </div>
+    <div class="overlay-actions" style="margin-top:24px;">
+      <button class="overlay-btn secondary" onclick="showMainMenu()">\u8fd4\u56de\u83dc\u5355</button>
+    </div>
+  `;
+  overlay.style.display = 'flex';
+  currentOverlayMode = 'changelog';
+};
 window.showMainMenu = function() {
   clearInterval(timerInterval);
   state.gameRunning = false;
@@ -2802,6 +2820,7 @@ window.showMainMenu = function() {
     <div class="overlay-actions">
       <button class="overlay-btn" onclick="startGame()">开始闯关</button>
       <button class="overlay-btn secondary" onclick="showLeaderboard()">🏆 排行榜</button>
+      <button class="overlay-btn secondary" onclick="showChangelog()">📋 更新记录</button>
     </div>
     <div id="ability-select"></div>
   `;
