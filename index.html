@@ -759,7 +759,7 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 
   <div id="overlay">
     <h1>💎 宝石闪击</h1>
-    <div class="subtitle">45 秒一关，达标后从 3 个能力里选 1 个，越往后越疯。</div>
+    <div class="subtitle">60 秒一关，达标后从 3 个能力里选 1 个，越往后越疯。</div>
     <div class="best-row" id="menu-best"></div>
     <div class="overlay-actions">
       <button class="overlay-btn" id="start-btn">开始闯关</button>
@@ -1129,7 +1129,7 @@ function playShuffle() {
 
 // ===== Game Config =====
 const COLS = 8, ROWS = 8;
-const BASE_LEVEL_TIME = 45;
+const BASE_LEVEL_TIME = 60;
 const BASE_TARGET = 300;
 const TARGET_GROWTH = 1.28; // exponential growth per level
 const SAVE_KEY = 'gemBlitzRogueSave';
@@ -2832,7 +2832,7 @@ window.showMainMenu = function() {
   state.awaitingAbility = false;
   overlay.innerHTML = `
     <h1>💎 宝石闪击</h1>
-    <div class="subtitle">45 秒一关，3 选 1 叠能力。目标分会越来越高，失误也会越来越疼。</div>
+    <div class="subtitle">60 秒一关，3 选 1 叠能力。目标分会越来越高，失误也会越来越疼。</div>
     <div class="best-row">最远 ${bestRecord.bestLevel} 关 · 最高总分 ${bestRecord.bestScore.toLocaleString()}</div>
     <div class="overlay-actions">
       <button class="overlay-btn" onclick="startGame()">开始闯关</button>
