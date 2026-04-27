@@ -780,41 +780,58 @@ function ensureAudio() {
 }
 function playMatch(combo) {
   ensureAudio();
-  const baseFreq = 440 + Math.min(combo, 10) * 60;
-  const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.18, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-  g.connect(audioCtx.destination);
-  const o = audioCtx.createOscillator();
-  o.type = 'sine';
-  o.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
-  o.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, audioCtx.currentTime + 0.15);
-  o.connect(g);
-  o.start(); o.stop(audioCtx.currentTime + 0.3);
-  const o2 = audioCtx.createOscillator();
-  const g2 = audioCtx.createGain();
-  g2.gain.setValueAtTime(0.08, audioCtx.currentTime);
-  g2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-  g2.connect(audioCtx.destination);
-  o2.type = 'triangle';
-  o2.frequency.setValueAtTime(baseFreq * 2, audioCtx.currentTime);
-  o2.connect(g2);
-  o2.start(); o2.stop(audioCtx.currentTime + 0.2);
+  const t = audioCtx.currentTime;
+  const scale = [523, 587, 659, 698, 784, 880, 988, 1047];
+  const freq = scale[Math.min(combo, scale.length - 1)];
+  // 主音：三角波
+  const main = audioCtx.createOscillator();
+  main.type = 'triangle';
+  main.frequency.setValueAtTime(freq, t);
+  main.frequency.exponentialRampToValueAtTime(freq * 1.2, t + 0.08);
+  const mg = audioCtx.createGain();
+  mg.gain.setValueAtTime(0.15, t);
+  mg.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  main.connect(mg); mg.connect(audioCtx.destination);
+  // 泛音：高八度正弦（水晶感）
+  const harm = audioCtx.createOscillator();
+  harm.type = 'sine';
+  harm.frequency.setValueAtTime(freq * 2, t);
+  const hg = audioCtx.createGain();
+  hg.gain.setValueAtTime(0.06, t);
+  hg.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  harm.connect(hg); hg.connect(audioCtx.destination);
+  // 延迟混响
+  const delay = audioCtx.createDelay();
+  delay.delayTime.value = 0.05;
+  const dg = audioCtx.createGain();
+  dg.gain.value = 0.25;
+  mg.connect(delay); delay.connect(dg); dg.connect(audioCtx.destination);
+  main.start(t); main.stop(t + 0.3);
+  harm.start(t); harm.stop(t + 0.15);
 }
 function playBigMatch() {
   ensureAudio();
-  const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-  g.connect(audioCtx.destination);
+  const t = audioCtx.currentTime;
   [523, 659, 784, 1047].forEach((f, i) => {
     const o = audioCtx.createOscillator();
-    o.type = 'sine';
+    o.type = 'triangle';
     o.frequency.value = f;
-    o.connect(g);
-    o.start(audioCtx.currentTime + i * 0.06);
-    o.stop(audioCtx.currentTime + i * 0.06 + 0.3);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.1, t + i * 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i * 0.03); o.stop(t + 0.6);
   });
+  // 高频闪烁尾音
+  const sh = audioCtx.createOscillator();
+  sh.type = 'sine';
+  sh.frequency.setValueAtTime(2093, t);
+  sh.frequency.exponentialRampToValueAtTime(4186, t + 0.3);
+  const sg = audioCtx.createGain();
+  sg.gain.setValueAtTime(0.04, t);
+  sg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  sh.connect(sg); sg.connect(audioCtx.destination);
+  sh.start(t); sh.stop(t + 0.3);
 }
 function playSwapFail() {
   ensureAudio();
@@ -843,33 +860,54 @@ function playCountdown() {
 }
 function playGameOver() {
   ensureAudio();
+  const t = audioCtx.currentTime;
   const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.15, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+  g.gain.setValueAtTime(0.13, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
   g.connect(audioCtx.destination);
   [659, 587, 523, 440].forEach((f, i) => {
     const o = audioCtx.createOscillator();
-    o.type = 'sine';
+    o.type = 'triangle';
     o.frequency.value = f;
     o.connect(g);
-    o.start(audioCtx.currentTime + i * 0.2);
-    o.stop(audioCtx.currentTime + i * 0.2 + 0.4);
+    o.start(t + i * 0.2);
+    o.stop(t + i * 0.2 + 0.5);
   });
+  // 低频铺底
+  const bass = audioCtx.createOscillator();
+  bass.type = 'sine';
+  bass.frequency.value = 110;
+  const bg = audioCtx.createGain();
+  bg.gain.setValueAtTime(0.08, t);
+  bg.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+  bass.connect(bg); bg.connect(audioCtx.destination);
+  bass.start(t); bass.stop(t + 1.2);
 }
 function playLevelClear() {
   ensureAudio();
+  const t = audioCtx.currentTime;
   const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.18, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.9);
+  g.gain.setValueAtTime(0.16, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
   g.connect(audioCtx.destination);
   [523, 659, 784, 1047, 1319].forEach((f, i) => {
     const o = audioCtx.createOscillator();
     o.type = 'triangle';
     o.frequency.value = f;
     o.connect(g);
-    o.start(audioCtx.currentTime + i * 0.07);
-    o.stop(audioCtx.currentTime + i * 0.07 + 0.28);
+    o.start(t + i * 0.07);
+    o.stop(t + i * 0.07 + 0.4);
   });
+  // shimmer 尾音
+  const sh = audioCtx.createOscillator();
+  sh.type = 'sine';
+  sh.frequency.setValueAtTime(2637, t + 0.3);
+  sh.frequency.exponentialRampToValueAtTime(5274, t + 0.8);
+  const sg = audioCtx.createGain();
+  sg.gain.setValueAtTime(0.03, t + 0.3);
+  sg.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+  sh.connect(sg); sg.connect(audioCtx.destination);
+  sh.start(t + 0.3); sh.stop(t + 0.8);
 }
 function playBomb() {
   ensureAudio();
@@ -1687,8 +1725,7 @@ function draw() {
       const radius = (CELL / 2 - PADDING - 2) * gem.scale;
       ctx.globalAlpha = gem.alpha;
       if (selected && selected.r === r && selected.c === c) {
-        ctx.shadowColor = g.glow;
-        ctx.shadowBlur = 14;
+        ctx.shadowBlur = 0; // 用呼吸光环代替shadowBlur
       } else {
         ctx.shadowBlur = 0;
       }
