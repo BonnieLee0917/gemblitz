@@ -1,0 +1,2925 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>💎 宝石闪击：Roguelike</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0c1028;
+  --bg-2: #161b43;
+  --panel: rgba(20, 24, 56, 0.84);
+  --panel-strong: rgba(16, 19, 48, 0.94);
+  --line: rgba(255,255,255,0.1);
+  --text: #f4f5ff;
+  --muted: #aab0da;
+  --gold: #ffd76a;
+  --mint: #74ffd6;
+  --danger: #ff6a7d;
+}
+body {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(115, 80, 255, 0.18), transparent 30%),
+    radial-gradient(circle at 80% 15%, rgba(255, 140, 80, 0.12), transparent 26%),
+    radial-gradient(circle at 50% 80%, rgba(62, 196, 255, 0.11), transparent 28%),
+    linear-gradient(180deg, #090d20, #111734 55%, #0a0f26);
+  color: var(--text);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#game-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(100vw - 20px, 560px);
+}
+#topbar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 10px;
+}
+.hud-card {
+  min-height: 68px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.09);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+}
+.label {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.value-strong {
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 900;
+  text-shadow: 0 0 20px rgba(255, 215, 106, 0.25);
+}
+.value-sub {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #cfd3f9;
+}
+#level-card .value-strong { color: #f8f3ff; }
+#score-card .value-strong { color: #ffd76a; }
+#timer-card .value-strong {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: #7cff9c;
+}
+.progress-shell {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+  box-shadow: inset 0 1px 4px rgba(0,0,0,0.35);
+}
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffcf6b, #ff8f6b);
+  box-shadow: 0 0 16px rgba(255, 170, 90, 0.42);
+  transition: width 0.25s ease;
+}
+#midbar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+}
+#combo-display {
+  min-height: 42px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffba45;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.icon-btn {
+  height: 42px;
+  min-width: 42px;
+  padding: 0 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+  transition: transform 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.icon-btn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.12); }
+.icon-btn:active { transform: scale(0.97); }
+.icon-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+  transform: none;
+}
+#pause-btn { font-size: 17px; }
+#shuffle-btn { font-size: 16px; }
+#abilities-panel {
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.03));
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+}
+#abilities-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+#abilities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.ability-badge .icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.28), rgba(255,255,255,0.05));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.ability-badge .meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+.ability-badge .name { font-size: 12px; color: #eef1ff; font-weight: 700; }
+.ability-badge .stack { font-size: 11px; color: #b8bfe7; margin-top: 3px; }
+.ability-empty {
+  color: #9aa3d7;
+  font-size: 13px;
+  padding: 6px 2px;
+}
+canvas {
+  border-radius: 18px;
+  box-shadow: 0 0 40px rgba(65, 96, 255, 0.18), 0 24px 60px rgba(0,0,0,0.34);
+  cursor: pointer;
+  touch-action: none;
+}
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at top, rgba(56, 67, 142, 0.26), transparent 30%), rgba(7, 10, 28, 0.96);
+  z-index: 50;
+  text-align: center;
+  overflow-y: auto;
+}
+#overlay h1 {
+  font-size: clamp(36px, 6vw, 50px);
+  color: #f8f7ff;
+  margin-bottom: 10px;
+  text-shadow: 0 0 30px rgba(255,215,106,0.45);
+}
+#overlay .subtitle {
+  max-width: 34ch;
+  line-height: 1.55;
+  font-size: 16px;
+  color: #b5bce4;
+  margin-bottom: 22px;
+}
+#overlay .final-score {
+  font-size: 60px;
+  line-height: 1;
+  font-weight: 900;
+  color: #ffd76a;
+  text-shadow: 0 0 28px rgba(255,215,106,0.28);
+  margin-bottom: 10px;
+}
+#overlay .stats {
+  font-size: 15px;
+  color: #d0d5f6;
+  margin-bottom: 22px;
+  line-height: 1.7;
+}
+.overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+.overlay-btn {
+  padding: 14px 28px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #11152e;
+  background: linear-gradient(135deg, #ffd76a, #ffac6a);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 176, 90, 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.overlay-btn:hover { transform: scale(1.04); box-shadow: 0 12px 30px rgba(255, 176, 90, 0.38); }
+.overlay-btn:active { transform: scale(0.97); }
+.overlay-btn.secondary {
+  background: linear-gradient(135deg, #7680bd, #5f6ca9);
+  color: #f7f8ff;
+  box-shadow: 0 8px 24px rgba(86, 101, 174, 0.25);
+  font-size: 17px;
+  padding: 12px 24px;
+}
+#ability-select {
+  width: min(100%, 540px);
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 10px;
+}
+.ability-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.ability-card {
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  padding: 16px 14px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background:
+    radial-gradient(circle at top right, rgba(255,255,255,0.16), transparent 35%),
+    linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.04));
+  color: #f5f7ff;
+  cursor: pointer;
+  box-shadow: 0 14px 32px rgba(0,0,0,0.25);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.ability-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 36px rgba(0,0,0,0.3);
+  border-color: rgba(255,215,106,0.4);
+}
+.ability-card .card-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.1);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.ability-card .card-name {
+  font-size: 18px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+.ability-card .card-desc {
+  font-size: 13px;
+  color: #d5daf7;
+  line-height: 1.55;
+  min-height: 64px;
+}
+.ability-card .card-tag {
+  margin-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #ffd98a;
+}
+.float-text {
+  position: absolute;
+  font-weight: 900;
+  font-size: 24px;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(255,200,50,0.8);
+  pointer-events: none;
+  z-index: 6;
+  animation: floatUp 0.8s ease-out forwards;
+}
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(1.28); }
+}
+.screen-shake { animation: shake 0.15s ease-out; }
+@keyframes shake {
+  0%,100% { transform: translate(0); }
+  25% { transform: translate(-3px, 2px); }
+  50% { transform: translate(3px, -2px); }
+  75% { transform: translate(-2px, -1px); }
+}
+#level-banner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  padding: 18px 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255,215,106,0.96), rgba(255,155,106,0.96));
+  color: #1b1732;
+  font-size: clamp(22px, 4.6vw, 34px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 20px 44px rgba(0,0,0,0.3);
+  z-index: 8;
+  opacity: 0;
+  pointer-events: none;
+}
+.banner-show { animation: bannerPop 1.2s cubic-bezier(.2,.9,.2,1) forwards; }
+@keyframes bannerPop {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.75); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  72% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1.04); }
+}
+.best-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #bfc6ef;
+}
+@media (max-width: 640px) {
+  #game-container { width: min(100vw - 14px, 520px); gap: 10px; }
+  #topbar { grid-template-columns: 1fr; }
+  #midbar { grid-template-columns: 1fr auto auto; }
+  .hud-card { min-height: 60px; }
+  .ability-grid { grid-template-columns: 1fr; }
+  .ability-card .card-desc { min-height: auto; }
+  .overlay-btn { width: 100%; }
+  .overlay-actions { width: 100%; }
+}
+
+/* === COMBO BAR === */
+#combo-bar-shell {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+  margin-top: 4px;
+}
+#combo-bar-fill {
+  width: 0%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffcf6b, #ff6b6b);
+  transition: width 0.2s ease;
+}
+/* === FRENZY MODE === */
+.frenzy-active {
+  animation: frenzyPulse 0.5s ease-in-out infinite alternate !important;
+}
+@keyframes frenzyPulse {
+  0% { box-shadow: 0 0 40px rgba(255, 80, 80, 0.3), 0 24px 60px rgba(0,0,0,0.34); }
+  100% { box-shadow: 0 0 60px rgba(255, 50, 50, 0.6), 0 0 100px rgba(255, 100, 50, 0.3), 0 24px 60px rgba(0,0,0,0.34); }
+}
+.frenzy-border {
+  border: 2px solid rgba(255, 80, 60, 0.7) !important;
+  background: linear-gradient(180deg, rgba(255,60,60,0.15), rgba(255,60,60,0.05)) !important;
+}
+#frenzy-label {
+  display: none;
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff4444, #ff8800);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  z-index: 9;
+  animation: frenzyBlink 0.6s ease-in-out infinite alternate;
+  white-space: nowrap;
+}
+@keyframes frenzyBlink {
+  0% { opacity: 0.8; transform: translateX(-50%) scale(1); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1.08); }
+}
+/* === MILESTONE CELEBRATION === */
+#milestone-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  display: none;
+}
+#milestone-text {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  font-size: clamp(40px, 8vw, 70px);
+  font-weight: 900;
+  color: #ffd76a;
+  text-shadow: 0 0 40px rgba(255,215,106,0.8), 0 0 80px rgba(255,150,50,0.5);
+  pointer-events: none;
+  z-index: 101;
+  opacity: 0;
+  white-space: nowrap;
+}
+.milestone-pop {
+  animation: milestonePop 1.5s cubic-bezier(.2,.9,.2,1) forwards !important;
+}
+@keyframes milestonePop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  30% { transform: translate(-50%, -50%) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(1.1); }
+}
+/* === MULTI FLOAT TEXT === */
+.float-text.mega {
+  font-size: 36px;
+  text-shadow: 0 0 20px rgba(255,200,50,1), 0 0 40px rgba(255,100,50,0.8);
+}
+.float-text.bonus {
+  font-size: 18px;
+  color: #74ffd6;
+  text-shadow: 0 0 10px rgba(116,255,214,0.8);
+}
+.float-text.combo-text {
+  font-size: 28px;
+  color: #ff6b6b;
+  text-shadow: 0 0 14px rgba(255,80,80,0.9);
+}
+/* === SCORE ROLLING === */
+.score-rolling {
+  transition: none;
+}
+@keyframes scoreJump {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+.score-bump {
+  animation: scoreJump 0.25s ease-out;
+}
+/* === STATS GRID === */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  text-align: left;
+  font-size: 14px;
+  color: #d0d5f6;
+  line-height: 1.8;
+  margin: 12px auto;
+  max-width: 320px;
+}
+.stats-grid .stat-label { color: #9aa3d7; }
+.stats-grid .stat-value { text-align: right; font-weight: 700; color: #ffd76a; }
+
+
+/* === HINT === */
+.hint-glow {
+  animation: hintPulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes hintPulse {
+  0% { box-shadow: 0 0 0 rgba(255,215,106,0); }
+  100% { box-shadow: 0 0 30px rgba(255,215,106,0.8); }
+}
+#hint-btn {
+  font-size: 15px;
+}
+
+/* === ABILITY TIERS === */
+.ability-card[data-tier="epic"] {
+  border-color: rgba(160, 120, 255, 0.4);
+  background: radial-gradient(circle at top right, rgba(160, 120, 255, 0.25), transparent 35%),
+    linear-gradient(180deg, rgba(120, 80, 255, 0.15), rgba(80, 50, 200, 0.08));
+}
+.ability-card[data-tier="legendary"] {
+  border-color: rgba(255, 200, 50, 0.5);
+  background: radial-gradient(circle at top right, rgba(255, 200, 50, 0.3), transparent 35%),
+    linear-gradient(180deg, rgba(255, 180, 50, 0.15), rgba(200, 120, 30, 0.08));
+  animation: legendaryShine 2s ease-in-out infinite alternate;
+}
+@keyframes legendaryShine {
+  0% { box-shadow: 0 14px 32px rgba(0,0,0,0.25), 0 0 15px rgba(255, 200, 50, 0.15); }
+  100% { box-shadow: 0 14px 32px rgba(0,0,0,0.25), 0 0 30px rgba(255, 200, 50, 0.35); }
+}
+.card-tag { margin-top: 12px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
+.tier-epic .card-tag { color: #c4a8ff; }
+.tier-legendary .card-tag { color: #ffd76a; }
+
+/* === BLACK HOLE === */
+@keyframes blackHoleSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+
+/* === LEADERBOARD === */
+#leaderboard-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background: rgba(7, 10, 28, 0.96);
+  z-index: 60;
+  overflow-y: auto;
+}
+.lb-container {
+  width: min(100%, 480px);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.lb-title {
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffd76a;
+  text-align: center;
+  margin-bottom: 16px;
+}
+.lb-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.lb-table th {
+  font-size: 12px;
+  color: #9aa3d7;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  text-align: left;
+}
+.lb-table td {
+  padding: 10px 6px;
+  font-size: 14px;
+  color: #d0d5f6;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.lb-table tr:nth-child(-n+3) td { color: #ffd76a; font-weight: 700; }
+.lb-table tr:nth-child(1) td:first-child::before { content: '🥇 '; }
+.lb-table tr:nth-child(2) td:first-child::before { content: '🥈 '; }
+.lb-table tr:nth-child(3) td:first-child::before { content: '🥉 '; }
+.lb-table .highlight { background: rgba(255,215,106,0.08); }
+.lb-close {
+  margin-top: 16px;
+  padding: 12px 28px;
+  font-size: 16px;
+  font-weight: 800;
+  color: #11152e;
+  background: linear-gradient(135deg, #ffd76a, #ffac6a);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.lb-empty {
+  text-align: center;
+  color: #9aa3d7;
+  padding: 40px 0;
+  font-size: 16px;
+}
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="topbar">
+    <div class="hud-card" id="level-card">
+      <div class="label">关卡目标</div>
+      <div class="value-strong" id="level-display">第 1 关</div>
+      <div class="value-sub" id="target-display">目标 300</div>
+      <div class="progress-shell" style="margin-top:10px;"><div class="progress-bar" id="target-progress"></div></div>
+    </div>
+    <div class="hud-card" id="score-card">
+      <div class="label">本关得分</div>
+      <div class="value-strong" id="score-display">0</div>
+      <div class="value-sub" id="total-score-display">总分 0</div>
+    </div>
+    <div class="hud-card" id="timer-card">
+      <div class="label">倒计时</div>
+      <div class="value-strong" id="timer-display">45</div>
+      <div class="value-sub" id="retry-display">复活 0 · 洗牌 0</div>
+    </div>
+  </div>
+
+  <div id="midbar">
+    <div id="combo-display"></div>
+    <button id="shuffle-btn" class="icon-btn" title="免费洗牌">🔄 <span id="shuffle-count">0</span></button>
+    <button id="lb-btn" class="icon-btn" title="排行榜" onclick="showLeaderboard()">🏆</button>
+    <button id="hint-btn" class="icon-btn" title="提示">💡</button>
+    <button id="pause-btn" class="icon-btn" title="暂停">⏸</button>
+  </div>
+
+  <div id="combo-bar-shell"><div id="combo-bar-fill"></div></div>
+
+  <div id="abilities-panel">
+    <div id="abilities-head">
+      <span>已获得能力</span>
+      <span id="best-display">最远 0 关 · 最高总分 0</span>
+    </div>
+    <div id="abilities-list"><div class="ability-empty">还没有能力，先打通第 1 关试试。</div></div>
+  </div>
+
+  <div id="leaderboard-overlay"></div>
+  <div id="milestone-flash"></div>
+  <div id="milestone-text"></div>
+  <canvas id="board"></canvas>
+  <div id="frenzy-label">🔥 FRENZY ×2</div>
+  <div id="level-banner"></div>
+
+  <div id="overlay">
+    <h1>💎 宝石闪击</h1>
+    <div class="subtitle">45 秒一关，达标后从 3 个能力里选 1 个，越往后越疯。</div>
+    <div class="best-row" id="menu-best"></div>
+    <div class="overlay-actions">
+      <button class="overlay-btn" id="start-btn">开始闯关</button>
+    </div>
+    <div id="ability-select"></div>
+  </div>
+</div>
+
+<script>
+// ===== Audio Engine (Web Audio API) =====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playMatch(combo) {
+  ensureAudio();
+  const baseFreq = 440 + Math.min(combo, 10) * 60;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+  g.connect(audioCtx.destination);
+  const o = audioCtx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(baseFreq, audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, audioCtx.currentTime + 0.15);
+  o.connect(g);
+  o.start(); o.stop(audioCtx.currentTime + 0.3);
+  const o2 = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  g2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  g2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+  g2.connect(audioCtx.destination);
+  o2.type = 'triangle';
+  o2.frequency.setValueAtTime(baseFreq * 2, audioCtx.currentTime);
+  o2.connect(g2);
+  o2.start(); o2.stop(audioCtx.currentTime + 0.2);
+}
+function playBigMatch() {
+  ensureAudio();
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+  g.connect(audioCtx.destination);
+  [523, 659, 784, 1047].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f;
+    o.connect(g);
+    o.start(audioCtx.currentTime + i * 0.06);
+    o.stop(audioCtx.currentTime + i * 0.06 + 0.3);
+  });
+}
+function playSwapFail() {
+  ensureAudio();
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+  g.connect(audioCtx.destination);
+  const o = audioCtx.createOscillator();
+  o.type = 'square';
+  o.frequency.setValueAtTime(200, audioCtx.currentTime);
+  o.frequency.linearRampToValueAtTime(120, audioCtx.currentTime + 0.15);
+  o.connect(g);
+  o.start(); o.stop(audioCtx.currentTime + 0.2);
+}
+function playCountdown() {
+  ensureAudio();
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+  g.connect(audioCtx.destination);
+  const o = audioCtx.createOscillator();
+  o.type = 'sine';
+  o.frequency.value = 880;
+  o.connect(g);
+  o.start(); o.stop(audioCtx.currentTime + 0.15);
+}
+function playGameOver() {
+  ensureAudio();
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+  g.connect(audioCtx.destination);
+  [659, 587, 523, 440].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f;
+    o.connect(g);
+    o.start(audioCtx.currentTime + i * 0.2);
+    o.stop(audioCtx.currentTime + i * 0.2 + 0.4);
+  });
+}
+function playLevelClear() {
+  ensureAudio();
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.9);
+  g.connect(audioCtx.destination);
+  [523, 659, 784, 1047, 1319].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = 'triangle';
+    o.frequency.value = f;
+    o.connect(g);
+    o.start(audioCtx.currentTime + i * 0.07);
+    o.stop(audioCtx.currentTime + i * 0.07 + 0.28);
+  });
+}
+function playBomb() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Punchy noise burst
+  const bufSize = Math.floor(audioCtx.sampleRate * 0.25);
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) {
+    const env = Math.pow(1 - i / bufSize, 3);
+    data[i] = (Math.random() * 2 - 1) * env;
+  }
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  // Band-pass filter for crunchier explosion
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(800, t);
+  bp.frequency.exponentialRampToValueAtTime(200, t + 0.2);
+  bp.Q.value = 1.5;
+  const noiseG = audioCtx.createGain();
+  noiseG.gain.setValueAtTime(0.4, t);
+  noiseG.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  noise.connect(bp);
+  bp.connect(noiseG);
+  noiseG.connect(audioCtx.destination);
+  noise.start(t); noise.stop(t + 0.25);
+  // Sharp attack transient
+  const click = audioCtx.createOscillator();
+  click.type = 'square';
+  click.frequency.setValueAtTime(300, t);
+  click.frequency.exponentialRampToValueAtTime(50, t + 0.08);
+  const clickG = audioCtx.createGain();
+  clickG.gain.setValueAtTime(0.3, t);
+  clickG.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  click.connect(clickG); clickG.connect(audioCtx.destination);
+  click.start(t); click.stop(t + 0.1);
+}
+function playAbilityPick() {
+  ensureAudio();
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.18, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+  g.connect(audioCtx.destination);
+  [784, 988, 1319].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f;
+    o.connect(g);
+    o.start(audioCtx.currentTime + i * 0.05);
+    o.stop(audioCtx.currentTime + i * 0.05 + 0.25);
+  });
+}
+
+function playSelect() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(660, t);
+  o.frequency.exponentialRampToValueAtTime(880, t + 0.06);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.12, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.1);
+}
+
+function playSwapSuccess() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  [440, 554].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = f;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.1, t + i * 0.04);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.04 + 0.12);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i * 0.04); o.stop(t + i * 0.04 + 0.12);
+  });
+}
+
+function playCrit() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Metallic slash
+  const bufSize = Math.floor(audioCtx.sampleRate * 0.15);
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 4);
+  }
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 2000; hp.Q.value = 2;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.25, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+  noise.connect(hp); hp.connect(g); g.connect(audioCtx.destination);
+  noise.start(t); noise.stop(t + 0.15);
+  // Rising ping
+  const o = audioCtx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(1200, t);
+  o.frequency.exponentialRampToValueAtTime(2400, t + 0.1);
+  const g2 = audioCtx.createGain();
+  g2.gain.setValueAtTime(0.15, t);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  o.connect(g2); g2.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.12);
+}
+
+function playFrenzyStart() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Power-up sweep
+  [330, 440, 554, 660, 880, 1100].forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.value = f;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.08, t + i * 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.03 + 0.15);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i * 0.03); o.stop(t + i * 0.03 + 0.15);
+  });
+}
+
+function playMilestone() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Grand fanfare
+  const chords = [[523, 659, 784], [659, 784, 1047], [784, 1047, 1319]];
+  chords.forEach((chord, ci) => {
+    chord.forEach(f => {
+      const o = audioCtx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.1, t + ci * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.001, t + ci * 0.12 + 0.4);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t + ci * 0.12); o.stop(t + ci * 0.12 + 0.4);
+    });
+  });
+}
+
+function playCascade() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Waterfall sweep down
+  for (let i = 0; i < 8; i++) {
+    const o = audioCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(1200 - i * 100, t + i * 0.025);
+    o.frequency.exponentialRampToValueAtTime(200, t + i * 0.025 + 0.2);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.08, t + i * 0.025);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.025 + 0.2);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i * 0.025); o.stop(t + i * 0.025 + 0.2);
+  }
+}
+
+function playMagnet() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Wobbly pull
+  const o = audioCtx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(300, t);
+  o.frequency.exponentialRampToValueAtTime(600, t + 0.15);
+  o.frequency.exponentialRampToValueAtTime(400, t + 0.25);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.15, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.25);
+}
+
+function playBlackHole() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Deep void suction
+  const o = audioCtx.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(400, t);
+  o.frequency.exponentialRampToValueAtTime(40, t + 0.4);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.12, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  const lp = audioCtx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 600;
+  o.connect(lp); lp.connect(g); g.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.4);
+}
+
+function playSupernova() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  // Charge up then explode
+  const charge = audioCtx.createOscillator();
+  charge.type = 'sine';
+  charge.frequency.setValueAtTime(200, t);
+  charge.frequency.exponentialRampToValueAtTime(2000, t + 0.3);
+  const cg = audioCtx.createGain();
+  cg.gain.setValueAtTime(0.15, t);
+  cg.gain.exponentialRampToValueAtTime(0.25, t + 0.28);
+  cg.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+  charge.connect(cg); cg.connect(audioCtx.destination);
+  charge.start(t); charge.stop(t + 0.35);
+  // Explosion burst
+  const bufSize = Math.floor(audioCtx.sampleRate * 0.3);
+  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufSize, 2);
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = buf;
+  const ng = audioCtx.createGain();
+  ng.gain.setValueAtTime(0.001, t);
+  ng.gain.setValueAtTime(0.35, t + 0.3);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  noise.connect(ng); ng.connect(audioCtx.destination);
+  noise.start(t); noise.stop(t + 0.6);
+}
+
+function playHint() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(1047, t);
+  o.frequency.setValueAtTime(1319, t + 0.08);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.08, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t); o.stop(t + 0.2);
+}
+
+function playShuffle() {
+  ensureAudio();
+  const t = audioCtx.currentTime;
+  for (let i = 0; i < 6; i++) {
+    const o = audioCtx.createOscillator();
+    o.type = 'triangle';
+    const f = 300 + Math.random() * 600;
+    o.frequency.value = f;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.06, t + i * 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.03 + 0.1);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i * 0.03); o.stop(t + i * 0.03 + 0.1);
+  }
+}
+
+// ===== Game Config =====
+const COLS = 8, ROWS = 8;
+const BASE_LEVEL_TIME = 45;
+const BASE_TARGET = 300;
+const TARGET_GROWTH = 1.28; // exponential growth per level
+const SAVE_KEY = 'gemBlitzRogueSave';
+const GEMS = [
+  { color: '#e74c3c', glow: '#ff6b6b', symbol: '🔴', name: '红宝石' },
+  { color: '#27ae60', glow: '#6fcf97', symbol: '🟢', name: '翡翠' },
+  { color: '#2980ff', glow: '#74b9ff', symbol: '🔷', name: '蓝宝石' },
+  { color: '#f1c40f', glow: '#fed330', symbol: '⭐', name: '黄玉' },
+  { color: '#9b59b6', glow: '#c39bd3', symbol: '🟣', name: '紫晶' },
+  { color: '#ffffff', glow: '#dfe6e9', symbol: '💎', name: '钻石' },
+  { color: '#00cec9', glow: '#81ecec', symbol: '🧊', name: '海蓝' },
+];
+const ABILITY_DEFS = {
+  flameTouch: {
+    key: 'flameTouch', icon: '🔥', name: '烈焰之触', tag: '爆发',
+    description: '每次 4+ 消除后，额外引爆周围十字范围。重复获得可扩大范围。',
+    onGain() { state.abilities.flameTouch++; }
+  },
+  scoreStreak: {
+    key: 'scoreStreak', icon: '🔥', name: '得分狂热', tag: '得分',
+    description: '每次消除基础分+15。叠加后越来越夸张，后期每次消除白送大量分数。',
+    onGain() { state.abilities.scoreStreak++; }
+  },
+  comboMaster: {
+    key: 'comboMaster', icon: '📈', name: '连击大师', tag: '节奏',
+    description: '连击倍率额外 +0.5。叠加后，滚雪球速度会明显加快。',
+    onGain() { state.abilities.comboMaster++; }
+  },
+  timeDilation: {
+    key: 'timeDilation', icon: '⏳', name: '时间膨胀', tag: '续航',
+    description: '每关额外 +8 秒。压力会小很多，而且会稳定变强。',
+    onGain() { state.abilities.timeDilation++; }
+  },
+  secondChance: {
+    key: 'secondChance', icon: '💖', name: '第二次机会', tag: '续命',
+    description: '闯关失败时可原地重试一次。重复获得会增加可用次数。',
+    onGain() {
+      state.abilities.secondChance++;
+      state.secondChanceCharges++;
+    }
+  },
+  freeShuffle: {
+    key: 'freeShuffle', icon: '🔄', name: '免费洗牌', tag: '策略',
+    description: '每关获得 1 次免费洗牌。重复获得会提高每关可用次数。',
+    onGain() { state.abilities.freeShuffle++; }
+  },
+  bombGem: {
+    key: 'bombGem', icon: '💣', name: '炸弹宝石', tag: '特殊',
+    description: '棋盘会随机出现炸弹宝石，参与消除时触发 3×3 爆炸。叠加提高生成概率。',
+    onGain() { state.abilities.bombGem++; }
+  },
+  lightning: {
+    key: 'lightning', icon: '⚡', name: '闪电链', tag: '特殊',
+    description: '5+ 消除时额外电掉同色宝石。重复获得会增加连锁消除数量。',
+    onGain() { state.abilities.lightning++; }
+  },
+
+  greed: {
+    key: 'greed', icon: '💰', name: '贪婪之心', tag: '得分',
+    description: '全局得分永久 +30%。叠加后越来越夸张。',
+    onGain() { state.abilities.greed++; }
+  },
+  comboShield: {
+    key: 'comboShield', icon: '🛡️', name: '连击护盾', tag: '节奏',
+    description: '连击断裂时保留一半连击数，而不是归零。叠加提高保留比例。',
+    onGain() { state.abilities.comboShield++; }
+  },
+  magnetPull: {
+    key: 'magnetPull', icon: '🧲', name: '磁力吸引', tag: '策略',
+    description: '每次消除后，随机将2颗同色宝石移到相邻位置，制造连锁机会。叠加增加数量。',
+    onGain() { state.abilities.magnetPull++; }
+  },
+  // === EPIC ABILITIES (appear after level 4) ===
+  cascade: {
+    key: 'cascade', icon: '🌊', name: '连锁风暴', tag: '史诗',
+    description: '每次消除后，棋盘随机一行整行消除。叠加增加行数。',
+    tier: 'epic', minLevel: 4,
+    onGain() { state.abilities.cascade++; }
+  },
+  midas: {
+    key: 'midas', icon: '👑', name: '点石成金', tag: '史诗',
+    description: '每消除10颗宝石，随机将一颗普通宝石变为炸弹。叠加降低触发门槛。',
+    tier: 'epic', minLevel: 4,
+    onGain() { state.abilities.midas++; }
+  },
+  timeFreeze: {
+    key: 'timeFreeze', icon: '❄️', name: '时间冻结', tag: '史诗',
+    description: '连击期间时间暂停。叠加后冻结时间延长。',
+    tier: 'epic', minLevel: 5,
+    onGain() { state.abilities.timeFreeze++; }
+  },
+  critStrike: {
+    key: 'critStrike', icon: '⚔️', name: '暴击', tag: '史诗',
+    description: '每次消除有20%概率得分翻倍。叠加提高暴击率和倍率。',
+    tier: 'epic', minLevel: 4,
+    onGain() { state.abilities.critStrike++; }
+  },
+  vortex: {
+    key: 'vortex', icon: '🌀', name: '漩涡吞噬', tag: '史诗',
+    description: '5+消除时，额外吞噬目标周围2格内所有宝石。叠加扩大范围。',
+    tier: 'epic', minLevel: 5,
+    onGain() { state.abilities.vortex++; }
+  },
+  // === LEGENDARY ABILITIES (appear after level 8, very rare) ===
+  supernova: {
+    key: 'supernova', icon: '💫', name: '超新星', tag: '传说',
+    description: '每过一关，下一关开始时自动引爆棋盘中心3×3区域。叠加扩大爆炸范围。',
+    tier: 'legendary', minLevel: 8,
+    onGain() { state.abilities.supernova++; }
+  },
+  infiniteCombo: {
+    key: 'infiniteCombo', icon: '♾️', name: '无尽连击', tag: '传说',
+    description: '连击倍率上限移除，且连击永远不会断（本关内）。不可叠加。',
+    tier: 'legendary', minLevel: 8,
+    onGain() { state.abilities.infiniteCombo = 1; }
+  },
+  gemRain: {
+    key: 'gemRain', icon: '🌈', name: '宝石雨', tag: '传说',
+    description: '每5秒自动消除棋盘上数量最多的一种颜色的所有宝石。叠加缩短间隔。',
+    tier: 'legendary', minLevel: 10,
+    onGain() { state.abilities.gemRain++; }
+  },
+  blackHole: {
+    key: 'blackHole', icon: '🕳️', name: '黑洞', tag: '传说',
+    description: '棋盘随机出现黑洞格，任何宝石落入都会被吞噬并计分，还会吸引周围宝石。叠加增加黑洞数。',
+    tier: 'legendary', minLevel: 10,
+    onGain() { state.abilities.blackHole++; }
+  },
+  doubleDown: {
+    key: 'doubleDown', icon: '🎰', name: '梭哈', tag: '传说',
+    description: '每关结束时，本关得分直接翻倍计入总分。叠加继续翻倍。',
+    tier: 'legendary', minLevel: 8,
+    onGain() { state.abilities.doubleDown++; }
+  },
+};
+
+
+// === FRENZY & JUICE STATE ===
+let frenzyActive = false;
+let lastMilestone = 0;
+const MILESTONES = [1000, 3000, 5000, 10000, 20000, 50000, 100000, 200000, 500000];
+let rollingScore = 0;
+let rollingTotal = 0;
+let rollAnimFrame = null;
+let biggestHit = 0;
+let abilityTriggers = 0;
+const comboBarFill = document.getElementById('combo-bar-fill');
+const frenzyLabel = document.getElementById('frenzy-label');
+const milestoneText = document.getElementById('milestone-text');
+
+function updateFrenzy(currentCombo) {
+  if (!comboBarFill || !frenzyLabel) return;
+  const threshold = 5;
+  const wasFrenzy = frenzyActive;
+  frenzyActive = currentCombo >= threshold;
+  // combo bar
+  const pct = Math.min(currentCombo / threshold, 1) * 100;
+  comboBarFill.style.width = pct + '%';
+  if (frenzyActive) {
+    comboBarFill.style.background = 'linear-gradient(90deg, #ff4444, #ff8800, #ffcc00)';
+    if (!wasFrenzy) {
+      canvas.classList.add('frenzy-active');
+      frenzyLabel.style.display = 'block';
+      playFrenzyStart();
+      floatText('🔥 FRENZY!', canvas.width / 2, canvas.height / 2, '#ff4444', 'combo-text');
+      screenShake();
+      playBigMatch();
+    }
+  } else {
+    comboBarFill.style.background = 'linear-gradient(90deg, #ffcf6b, #ff6b6b)';
+    canvas.classList.remove('frenzy-active');
+    frenzyLabel.style.display = 'none';
+  }
+}
+
+function checkMilestone(totalScore) {
+  for (const m of MILESTONES) {
+    if (totalScore >= m && lastMilestone < m) {
+      lastMilestone = m;
+      celebrateMilestone(m);
+      break;
+    }
+  }
+}
+
+function celebrateMilestone(amount) {
+  if (!milestoneText) return;
+  const label = amount >= 1000 ? (amount / 1000) + 'K' : amount;
+  milestoneText.textContent = '🏆 ' + label + ' 分!';
+  milestoneText.classList.remove('milestone-pop');
+  void milestoneText.offsetWidth;
+  milestoneText.classList.add('milestone-pop');
+  // spawn extra particles everywhere
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * canvas.width;
+    const y = Math.random() * canvas.height;
+    const colors = ['#ffd76a', '#ff6b6b', '#74ffd6', '#9be7ff', '#c39bd3'];
+    spawnParticles(x, y, colors[Math.floor(Math.random() * colors.length)], 4, 2);
+  }
+  screenShake();
+  playMilestone();
+}
+
+function animateRollingScore() {
+  const scoreEl = document.getElementById('score-display');
+  const totalEl = document.getElementById('total-score-display');
+  const targetScore = state.levelScore;
+  const targetTotal = state.totalScore;
+  const speed = 0.15;
+  let changed = false;
+  if (Math.abs(rollingScore - targetScore) > 1) {
+    rollingScore += (targetScore - rollingScore) * speed;
+    rollingScore = Math.round(rollingScore);
+    changed = true;
+  } else {
+    rollingScore = targetScore;
+  }
+  if (Math.abs(rollingTotal - targetTotal) > 1) {
+    rollingTotal += (targetTotal - rollingTotal) * speed;
+    rollingTotal = Math.round(rollingTotal);
+    changed = true;
+  } else {
+    rollingTotal = targetTotal;
+  }
+  scoreEl.textContent = rollingScore.toLocaleString();
+  totalEl.textContent = '总分 ' + rollingTotal.toLocaleString();
+  if (changed) {
+    rollAnimFrame = requestAnimationFrame(animateRollingScore);
+  } else {
+    rollAnimFrame = null;
+  }
+}
+
+function triggerScoreRoll() {
+  if (!rollAnimFrame) {
+    rollAnimFrame = requestAnimationFrame(animateRollingScore);
+  }
+}
+
+function scoreBump() {
+  const el = document.getElementById('score-display');
+  el.classList.remove('score-bump');
+  void el.offsetWidth;
+  el.classList.add('score-bump');
+}
+
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('start-btn');
+const levelDisplay = document.getElementById('level-display');
+const targetDisplay = document.getElementById('target-display');
+const targetProgress = document.getElementById('target-progress');
+const scoreDisplay = document.getElementById('score-display');
+const totalScoreDisplay = document.getElementById('total-score-display');
+const timerDisplay = document.getElementById('timer-display');
+const retryDisplay = document.getElementById('retry-display');
+const comboDisplay = document.getElementById('combo-display');
+const pauseBtn = document.getElementById('pause-btn');
+const shuffleBtn = document.getElementById('shuffle-btn');
+const shuffleCount = document.getElementById('shuffle-count');
+const container = document.getElementById('game-container');
+const abilitiesList = document.getElementById('abilities-list');
+const bestDisplay = document.getElementById('best-display');
+const menuBest = document.getElementById('menu-best');
+const levelBanner = document.getElementById('level-banner');
+
+let CELL, PADDING;
+let grid = [], animating = false, selected = null, particles = [];
+let dragStart = null;
+let timerInterval = null;
+let lastTickSecond = -1;
+let currentOverlayMode = 'menu';
+const bestRecord = loadBestRecord();
+
+const state = {
+  gameRunning: false,
+  paused: false,
+  awaitingAbility: false,
+  level: 1,
+  levelTarget: BASE_TARGET,
+  levelScore: 0,
+  totalScore: 0,
+  timeLeft: BASE_LEVEL_TIME,
+  maxCombo: 0,
+  totalMatches: 0,
+  shufflesLeft: 0,
+  secondChanceCharges: 0,
+  levelStartTotalScore: 0,
+  abilities: createAbilityState(),
+  colorMastery: Array(GEMS.length).fill(0),
+};
+
+function createAbilityState() {
+  return {
+    flameTouch: 0,
+    scoreStreak: 0,
+    comboMaster: 0,
+    timeDilation: 0,
+    secondChance: 0,
+    freeShuffle: 0,
+    bombGem: 0,
+    lightning: 0,
+    greed: 0,
+    comboShield: 0,
+    magnetPull: 0,
+    cascade: 0,
+    midas: 0,
+    timeFreeze: 0,
+    critStrike: 0,
+    vortex: 0,
+    supernova: 0,
+    infiniteCombo: 0,
+    gemRain: 0,
+    blackHole: 0,
+    doubleDown: 0,
+  };
+}
+
+function loadBestRecord() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return { bestLevel: 0, bestScore: 0 };
+    const data = JSON.parse(raw);
+    return {
+      bestLevel: Number(data.bestLevel) || 0,
+      bestScore: Number(data.bestScore) || 0,
+    };
+  } catch {
+    return { bestLevel: 0, bestScore: 0 };
+  }
+}
+function saveBestRecord(level, score) {
+  bestRecord.bestLevel = Math.max(bestRecord.bestLevel, level);
+  bestRecord.bestScore = Math.max(bestRecord.bestScore, score);
+  localStorage.setItem(SAVE_KEY, JSON.stringify(bestRecord));
+  renderBestRecord();
+}
+function renderBestRecord() {
+  const text = `最远 ${bestRecord.bestLevel} 关 · 最高总分 ${bestRecord.bestScore.toLocaleString()}`;
+  bestDisplay.textContent = text;
+  menuBest.textContent = text;
+}
+
+function initSize() {
+  const maxW = Math.min(window.innerWidth - 20, 520);
+  const maxH = window.innerHeight - 250;
+  const size = Math.max(280, Math.min(maxW, maxH));
+  CELL = Math.floor(size / COLS);
+  PADDING = Math.floor(CELL * 0.06);
+  canvas.width = CELL * COLS;
+  canvas.height = CELL * ROWS;
+}
+function createGem(r, c, opts = {}) {
+  const gem = {
+    type: opts.type ?? Math.floor(Math.random() * GEMS.length),
+    special: opts.special || null,
+    x: c * CELL,
+    y: opts.y ?? r * CELL,
+    targetX: c * CELL,
+    targetY: r * CELL,
+    scale: 1,
+    alpha: 1,
+    removing: false
+  };
+  return gem;
+}
+function maybeSpecialForNewGem() {
+  const bombLevel = state.abilities.bombGem;
+  const chance = bombLevel > 0 ? Math.min(0.03 + bombLevel * 0.025, 0.22) : 0;
+  return Math.random() < chance ? 'bomb' : null;
+}
+function initGrid() {
+  grid = [];
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      let gem;
+      do {
+        gem = createGem(r, c, { type: Math.floor(Math.random() * GEMS.length), special: maybeSpecialForNewGem() });
+      } while (
+        (c >= 2 && grid[r][c-1]?.type === gem.type && grid[r][c-2]?.type === gem.type) ||
+        (r >= 2 && grid[r-1]?.[c]?.type === gem.type && grid[r-2]?.[c]?.type === gem.type)
+      );
+      grid[r][c] = gem;
+    }
+  }
+}
+function getLevelTarget(level) {
+  // Exponential: 300, 384, 492, 630, 806, 1032, 1321, 1691, 2164...
+  return Math.round(BASE_TARGET * Math.pow(TARGET_GROWTH, level - 1));
+}
+function getLevelTime() {
+  return BASE_LEVEL_TIME + state.abilities.timeDilation * 8;
+}
+
+function updateHUD() {
+  levelDisplay.textContent = `第 ${state.level} 关`;
+  targetDisplay.textContent = `目标 ${state.levelTarget.toLocaleString()}`;
+  scoreDisplay.textContent = state.levelScore.toLocaleString();
+  totalScoreDisplay.textContent = `总分 ${state.totalScore.toLocaleString()}`;
+  retryDisplay.textContent = `复活 ${state.secondChanceCharges} · 洗牌 ${state.shufflesLeft}`;
+  shuffleCount.textContent = state.shufflesLeft;
+  shuffleBtn.disabled = !state.gameRunning || state.paused || animating || state.awaitingAbility || state.shufflesLeft <= 0;
+  const progress = Math.min(state.levelScore / state.levelTarget, 1);
+  targetProgress.style.width = `${progress * 100}%`;
+  targetProgress.style.background = progress >= 1
+    ? 'linear-gradient(90deg, #7cfbc5, #56e39f)'
+    : 'linear-gradient(90deg, #ffcf6b, #ff8f6b)';
+  updateTimerDisplay();
+  renderAbilities();
+}
+function updateTimerDisplay() {
+  const secs = Math.ceil(state.timeLeft);
+  timerDisplay.textContent = secs;
+  if (state.timeLeft <= 5) {
+    timerDisplay.style.color = '#ff6a7d';
+    timerDisplay.style.textShadow = '0 0 20px rgba(255,90,110,0.9)';
+    timerDisplay.style.transform = `scale(${1 + Math.sin(Date.now() / 95) * 0.08})`;
+  } else if (state.timeLeft <= 12) {
+    timerDisplay.style.color = '#ffbf61';
+    timerDisplay.style.textShadow = '0 0 15px rgba(255,180,90,0.72)';
+    timerDisplay.style.transform = 'scale(1)';
+  } else {
+    timerDisplay.style.color = '#7cff9c';
+    timerDisplay.style.textShadow = '0 0 15px rgba(124,255,156,0.66)';
+    timerDisplay.style.transform = 'scale(1)';
+  }
+  const currentSec = Math.ceil(state.timeLeft);
+  if (state.gameRunning && currentSec <= 5 && currentSec > 0 && currentSec !== lastTickSecond) {
+    lastTickSecond = currentSec;
+    playCountdown();
+  }
+}
+function renderAbilities() {
+  const entries = Object.values(ABILITY_DEFS)
+    .map(def => ({ def, stack: state.abilities[def.key] || 0 }))
+    .filter(item => item.stack > 0);
+
+  if (entries.length === 0) {
+    abilitiesList.innerHTML = '<div class="ability-empty">还没有能力，先打通第 1 关试试。</div>';
+    return;
+  }
+
+  abilitiesList.innerHTML = entries.map(({ def, stack }) => {
+    let extra = `x${Math.max(stack, 1)}`;
+    if (def.key === 'secondChance') {
+      extra = `持有 ${state.secondChanceCharges} 次`;
+    } else if (def.key === 'freeShuffle') {
+      extra = `每关 +${state.abilities.freeShuffle} 次`;
+    }
+    return `
+      <div class="ability-badge" title="${def.description}">
+        <div class="icon">${def.icon}</div>
+        <div class="meta">
+          <div class="name">${def.name}</div>
+          <div class="stack">${extra}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const boardGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  boardGrad.addColorStop(0, '#171c4b');
+  boardGrad.addColorStop(1, '#111536');
+  ctx.fillStyle = boardGrad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      ctx.fillStyle = (r + c) % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.055)';
+      ctx.fillRect(c * CELL, r * CELL, CELL, CELL);
+    }
+  }
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const gem = grid[r]?.[c];
+      if (!gem) continue;
+      const g = GEMS[gem.type];
+      const cx = gem.x + CELL / 2;
+      const cy = gem.y + CELL / 2;
+      const radius = (CELL / 2 - PADDING - 2) * gem.scale;
+      ctx.globalAlpha = gem.alpha;
+      if (selected && selected.r === r && selected.c === c) {
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 22;
+      } else {
+        ctx.shadowColor = g.glow;
+        ctx.shadowBlur = gem.special === 'bomb' ? 18 : 10;
+      }
+      const grad = ctx.createRadialGradient(cx - radius*0.3, cy - radius*0.3, radius*0.1, cx, cy, radius);
+      grad.addColorStop(0, g.glow);
+      grad.addColorStop(1, g.color);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (gem.type === 5) {
+        ctx.strokeStyle = 'rgba(180,180,200,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = 'rgba(255,255,255,0.34)';
+      ctx.beginPath();
+      ctx.arc(cx - radius*0.2, cy - radius*0.24, radius*0.34, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = gem.type === 5 ? 'rgba(100,100,120,0.78)' : 'rgba(255,255,255,0.92)';
+      ctx.font = `${Math.floor(radius * 0.8)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(g.symbol, cx, cy + 1);
+
+      if (gem.special === 'bomb') {
+        ctx.fillStyle = '#1c1631';
+        ctx.beginPath();
+        ctx.arc(cx + radius * 0.32, cy + radius * 0.28, radius * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffd76a';
+        ctx.font = `${Math.floor(radius * 0.5)}px sans-serif`;
+        ctx.fillText('💥', cx + radius * 0.32, cy + radius * 0.28 + 1);
+      }
+
+      if (selected && selected.r === r && selected.c === c) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  // Draw black holes
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const gem = grid[r]?.[c];
+      if (gem && gem.special === 'blackhole') {
+        const cx = gem.x + CELL / 2;
+        const cy = gem.y + CELL / 2;
+        const radius = (CELL / 2 - PADDING - 2);
+        // Outer swirl
+        const t = Date.now() / 800;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(t);
+        const grad = ctx.createRadialGradient(0, 0, radius * 0.1, 0, 0, radius);
+        grad.addColorStop(0, '#000000');
+        grad.addColorStop(0.4, '#1a0033');
+        grad.addColorStop(0.7, '#330066');
+        grad.addColorStop(1, 'rgba(80, 0, 160, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+        // Inner void
+        ctx.shadowColor = '#6600cc';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // Spiral arms
+        for (let i = 0; i < 3; i++) {
+          const angle = (Math.PI * 2 / 3) * i + t * 2;
+          ctx.strokeStyle = `rgba(160, 80, 255, ${0.3 + Math.sin(t * 3 + i) * 0.2})`;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let s = 0; s < 20; s++) {
+            const a = angle + s * 0.3;
+            const rr = radius * 0.2 + s * radius * 0.05;
+            const px = Math.cos(a) * rr;
+            const py = Math.sin(a) * rr;
+            s === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        }
+        // Center icon
+        ctx.fillStyle = '#fff';
+        ctx.font = `${Math.floor(radius * 0.6)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🕳️', 0, 1);
+        ctx.restore();
+      }
+    }
+  }
+  drawParticles();
+  drawHintOverlay();
+}
+
+function spawnParticles(x, y, color, count = 8, spread = 1) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.6;
+    const speed = (2 + Math.random() * 4) * spread;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.03,
+      size: 2 + Math.random() * 4,
+      color
+    });
+  }
+}
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+}
+function floatText(text, x, y, color = '#ffcc00', extraClass = '') {
+  const rect = canvas.getBoundingClientRect();
+  const parentRect = container.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'float-text' + (extraClass ? ' ' + extraClass : '');
+  el.textContent = text;
+  el.style.left = (rect.left - parentRect.left + x) + 'px';
+  el.style.top = (rect.top - parentRect.top + y) + 'px';
+  el.style.color = color;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+function screenShake() {
+  canvas.classList.add('screen-shake');
+  setTimeout(() => canvas.classList.remove('screen-shake'), 150);
+}
+function flashBanner(text, duration = 1200) {
+  levelBanner.textContent = text;
+  levelBanner.classList.remove('banner-show');
+  void levelBanner.offsetWidth;
+  levelBanner.classList.add('banner-show');
+  setTimeout(() => levelBanner.classList.remove('banner-show'), duration);
+}
+
+function getCellKey(r, c) { return `${r},${c}`; }
+function parseCellKey(key) { return key.split(',').map(Number); }
+function inBounds(r, c) { return r >= 0 && r < ROWS && c >= 0 && c < COLS; }
+
+function findMatchData() {
+  const groups = [];
+  const matched = new Set();
+
+  for (let r = 0; r < ROWS; r++) {
+    let c = 0;
+    while (c < COLS) {
+      const gem = grid[r][c];
+      if (!gem || gem.special === 'blackhole') { c++; continue; }
+      const t = gem.type;
+      let len = 1;
+      while (c + len < COLS && grid[r][c + len]?.type === t) len++;
+      if (len >= 3) {
+        const cells = [];
+        for (let i = 0; i < len; i++) {
+          const key = getCellKey(r, c + i);
+          matched.add(key);
+          cells.push({ r, c: c + i, type: t });
+        }
+        groups.push({ cells, len, type: t, orientation: 'row' });
+      }
+      c += len;
+    }
+  }
+
+  for (let c = 0; c < COLS; c++) {
+    let r = 0;
+    while (r < ROWS) {
+      const gem = grid[r][c];
+      if (!gem || gem.special === 'blackhole') { r++; continue; }
+      const t = gem.type;
+      let len = 1;
+      while (r + len < ROWS && grid[r + len]?.[c]?.type === t) len++;
+      if (len >= 3) {
+        const cells = [];
+        for (let i = 0; i < len; i++) {
+          const key = getCellKey(r + i, c);
+          matched.add(key);
+          cells.push({ r: r + i, c, type: t });
+        }
+        groups.push({ cells, len, type: t, orientation: 'col' });
+      }
+      r += len;
+    }
+  }
+
+  return { matched, groups };
+}
+
+function expandExplosionCell(set, r, c, size = 1) {
+  for (let rr = r - size; rr <= r + size; rr++) {
+    for (let cc = c - size; cc <= c + size; cc++) {
+      if (inBounds(rr, cc)) set.add(getCellKey(rr, cc));
+    }
+  }
+}
+function expandCross(set, r, c, radius) {
+  set.add(getCellKey(r, c));
+  for (let i = 1; i <= radius; i++) {
+    if (inBounds(r + i, c)) set.add(getCellKey(r + i, c));
+    if (inBounds(r - i, c)) set.add(getCellKey(r - i, c));
+    if (inBounds(r, c + i)) set.add(getCellKey(r, c + i));
+    if (inBounds(r, c - i)) set.add(getCellKey(r, c - i));
+  }
+}
+function resolveBombChains(set) {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const key of [...set]) {
+      const [r, c] = parseCellKey(key);
+      const gem = grid[r]?.[c];
+      if (gem?.special === 'bomb' && !gem._bombTriggered) {
+        gem._bombTriggered = true;
+        expandExplosionCell(set, r, c, 1);
+        playBomb();
+        screenShake();
+        changed = true;
+      }
+    }
+  }
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c]) grid[r][c]._bombTriggered = false;
+    }
+  }
+}
+function pickLightningTargets(type, count, currentSet) {
+  const cells = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const gem = grid[r][c];
+      if (!gem) continue;
+      const key = getCellKey(r, c);
+      if (gem.type === type && !currentSet.has(key)) cells.push(key);
+    }
+  }
+  for (let i = cells.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cells[i], cells[j]] = [cells[j], cells[i]];
+  }
+  return cells.slice(0, count);
+}
+function computeRemovalBundle(matchData) {
+  const removalSet = new Set(matchData.matched);
+  const meta = {
+    maxGroupLen: 0,
+    lightningColor: null,
+    causedBigMatch: false,
+    bombsTriggered: 0,
+  };
+
+  for (const group of matchData.groups) {
+    meta.maxGroupLen = Math.max(meta.maxGroupLen, group.len);
+    if (group.len >= 5 && meta.lightningColor === null) meta.lightningColor = group.type;
+  }
+
+  if (meta.maxGroupLen >= 4 && state.abilities.flameTouch > 0) {
+    meta.causedBigMatch = true;
+    const radius = state.abilities.flameTouch;
+    for (const key of matchData.matched) {
+      const [r, c] = parseCellKey(key);
+      expandCross(removalSet, r, c, radius);
+    }
+  }
+
+  resolveBombChains(removalSet);
+  for (const key of removalSet) {
+    const [r, c] = parseCellKey(key);
+    if (grid[r]?.[c]?.special === 'bomb') meta.bombsTriggered++;
+  }
+
+  // Vortex: 5+ matches consume 2-cell radius
+  if (meta.maxGroupLen >= 5 && state.abilities.vortex > 0) {
+    const vortexRadius = 1 + state.abilities.vortex;
+    for (const group of matchData.groups) {
+      if (group.len >= 5) {
+        const midCell = group.cells[Math.floor(group.cells.length / 2)];
+        expandExplosionCell(removalSet, midCell.r, midCell.c, vortexRadius);
+        floatText('🌀 吞噬!', midCell.c * CELL + CELL/2, midCell.r * CELL + CELL/2, '#9be7ff', 'combo-text');
+      }
+    }
+    abilityTriggers++;
+  }
+  if (meta.maxGroupLen >= 5 && state.abilities.lightning > 0 && meta.lightningColor !== null) {
+    meta.causedBigMatch = true;
+    const extra = 5 + (state.abilities.lightning - 1) * 3;
+    const lightningCells = pickLightningTargets(meta.lightningColor, extra, removalSet);
+    lightningCells.forEach(key => removalSet.add(key));
+    if (lightningCells.length) {
+      flashBanner(`⚡ 闪电链 ×${lightningCells.length}`, 900);
+      lightningCells.forEach(key => {
+        const [r, c] = parseCellKey(key);
+        spawnParticles(c * CELL + CELL/2, r * CELL + CELL/2, '#9be7ff', 10, 1.3);
+      });
+      resolveBombChains(removalSet);
+    }
+  }
+
+  return { removalSet, meta };
+}
+function getCellPoints(gem) {
+  const streakBonus = state.abilities.scoreStreak * 15;
+  const bombBonus = gem.special === 'bomb' ? 1.8 : 1;
+  return (10 + streakBonus) * bombBonus;
+}
+
+async function removeAndRefill(matchData) {
+  if (!matchData.matched.size) return false;
+  const { removalSet, meta } = computeRemovalBundle(matchData);
+  const removedKeys = [...removalSet];
+  const removedCount = removedKeys.length;
+  let basePoints = 0;
+  let centerKey = removedKeys[0];
+
+  combo++;
+  state.maxCombo = Math.max(state.maxCombo, combo);
+  state.totalMatches += removedCount;
+
+  state.levelMatches = (state.levelMatches || 0) + removedCount;
+  // Midas: convert to bomb every N clears
+  if (state.abilities.midas > 0) {
+    const threshold = Math.max(3, 10 - state.abilities.midas * 2);
+    if (state.levelMatches >= threshold) {
+      state.levelMatches -= threshold;
+      // Find a random non-bomb gem and make it a bomb
+      const candidates = [];
+      for (let rr = 0; rr < ROWS; rr++) for (let cc = 0; cc < COLS; cc++) {
+        if (grid[rr][cc] && grid[rr][cc].special !== 'bomb') candidates.push({r:rr,c:cc});
+      }
+      if (candidates.length > 0) {
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        grid[pick.r][pick.c].special = 'bomb';
+        spawnParticles(pick.c * CELL + CELL/2, pick.r * CELL + CELL/2, '#ffd76a', 10, 1.5);
+        floatText('👑 点金!', pick.c * CELL + CELL/2, pick.r * CELL + CELL/2 - 20, '#ffd76a', 'bonus');
+        abilityTriggers++;
+      }
+    }
+  }
+
+  for (const key of removedKeys) {
+    const [r, c] = parseCellKey(key);
+    const gem = grid[r]?.[c];
+    if (!gem) continue;
+    basePoints += getCellPoints(gem);
+  }
+  const comboMult = combo * (1 + state.abilities.comboMaster * 0.5);
+  const greedMult = 1 + state.abilities.greed * 0.3;
+  const frenzyMult = frenzyActive ? 2 : 1;
+  // Crit strike
+  let critMult = 1;
+  let isCrit = false;
+  if (state.abilities.critStrike > 0) {
+    const critChance = Math.min(0.2 + (state.abilities.critStrike - 1) * 0.1, 0.6);
+    const critDamage = 2 + (state.abilities.critStrike - 1) * 0.5;
+    if (Math.random() < critChance) { critMult = critDamage; isCrit = true; }
+  }
+  const totalMult = comboMult * greedMult * frenzyMult * critMult;
+  const points = Math.round(basePoints * totalMult);
+  state.levelScore += points;
+  state.totalScore += points;
+  biggestHit = Math.max(biggestHit, points);
+  triggerScoreRoll();
+  scoreBump();
+  updateFrenzy(combo);
+  checkMilestone(state.totalScore);
+  updateHUD();
+
+  let multLabel = `${comboMult.toFixed(1)}x`;
+  if (greedMult > 1) multLabel += ` ×贪${greedMult.toFixed(1)}`;
+  if (frenzyMult > 1) multLabel += ' ×狂2';
+  if (isCrit) multLabel += ' ×暴击!';
+  comboDisplay.textContent = combo > 1 ? `${combo}x 连击  ·  倍率 ${multLabel}` : `倍率 ${multLabel}`;
+  comboDisplay.style.color = frenzyActive ? '#ff4444' : combo >= 5 ? '#ff6f7d' : combo >= 3 ? '#ffbe63' : '#b8c0ff';
+
+  if (meta.maxGroupLen >= 5 || meta.bombsTriggered > 0) {
+    playBigMatch();
+  } else {
+    playMatch(combo);
+  }
+  if (combo >= 3 || meta.bombsTriggered > 0) screenShake();
+
+  for (const key of removedKeys) {
+    const [r, c] = parseCellKey(key);
+    const gem = grid[r]?.[c];
+    if (gem) {
+      spawnParticles(gem.x + CELL/2, gem.y + CELL/2, gem.special === 'bomb' ? '#ffd76a' : GEMS[gem.type].glow, meta.bombsTriggered > 0 ? 14 : 8, gem.special === 'bomb' ? 1.5 : 1);
+      gem.removing = true;
+    }
+  }
+  const [fr, fc] = parseCellKey(centerKey);
+  const isMega = points >= 200 || frenzyActive;
+  floatText(`+${points}`, fc * CELL + CELL/2, fr * CELL + CELL/2, frenzyActive ? '#ff4444' : '#ffd76a', isMega ? 'mega' : '');
+  if (combo > 1) floatText(`${combo}x`, fc * CELL + CELL/2 + 30, fr * CELL + CELL/2 - 30, '#ff6b6b', combo >= 5 ? 'combo-text' : 'bonus');
+  if (frenzyActive) floatText('FRENZY ×2', fc * CELL + CELL/2 - 20, fr * CELL + CELL/2 + 28, '#ff8800', 'bonus');
+  if (isCrit) { playCrit(); floatText(`⚔️ 暴击 ×${critMult.toFixed(1)}`, fc * CELL + CELL/2 - 30, fr * CELL + CELL/2 - 50, '#ff4444', 'mega'); abilityTriggers++; }
+  if (state.abilities.greed > 0) floatText(`贪×${(1 + state.abilities.greed * 0.3).toFixed(1)}`, fc * CELL + CELL/2 + 40, fr * CELL + CELL/2 + 10, '#74ffd6', 'bonus');
+  if (meta.maxGroupLen >= 4 && state.abilities.flameTouch > 0) { floatText('🔥 爆燃', fc * CELL + CELL/2 + 10, fr * CELL + CELL/2 - 22, '#ff8e63'); abilityTriggers++; }
+  if (meta.bombsTriggered > 0) { floatText(`💣 x${meta.bombsTriggered}`, fc * CELL + CELL/2 - 14, fr * CELL + CELL/2 + 18, '#ffe386'); abilityTriggers++; }
+
+  await animate(200, t => {
+    for (const key of removedKeys) {
+      const [r, c] = parseCellKey(key);
+      if (grid[r][c]) {
+        grid[r][c].scale = 1 - t;
+        grid[r][c].alpha = 1 - t;
+      }
+    }
+  });
+
+  for (const key of removedKeys) {
+    const [r, c] = parseCellKey(key);
+    if (grid[r][c] && grid[r][c].special === 'blackhole') continue; // black holes persist
+    grid[r][c] = null;
+  }
+
+  for (let c = 0; c < COLS; c++) {
+    let writeRow = ROWS - 1;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (grid[r][c]) {
+        grid[writeRow][c] = grid[r][c];
+        if (writeRow !== r) grid[r][c] = null;
+        grid[writeRow][c].targetY = writeRow * CELL;
+        grid[writeRow][c].targetX = c * CELL;
+        writeRow--;
+      }
+    }
+    for (let r = writeRow; r >= 0; r--) {
+      grid[r][c] = createGem(r, c, {
+        type: Math.floor(Math.random() * GEMS.length),
+        special: maybeSpecialForNewGem(),
+        y: (r - writeRow - 1) * CELL,
+      });
+    }
+  }
+
+  await animate(260, t => {
+    const ease = 1 - Math.pow(1 - t, 3);
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const gem = grid[r][c];
+        if (gem && gem.y !== gem.targetY) {
+          gem.y = gem.y + (gem.targetY - gem.y) * ease * 0.34;
+          if (Math.abs(gem.y - gem.targetY) < 0.5) gem.y = gem.targetY;
+        }
+      }
+    }
+  });
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c]) {
+        grid[r][c].x = grid[r][c].targetX;
+        grid[r][c].y = grid[r][c].targetY;
+        grid[r][c].scale = 1;
+        grid[r][c].alpha = 1;
+      }
+    }
+  }
+  // Cascade: eliminate random rows
+  if (state.abilities.cascade > 0 && removedCount >= 3) {
+    const rowCount = state.abilities.cascade;
+    const usedRows = new Set();
+    for (let i = 0; i < rowCount; i++) {
+      let row;
+      let s2 = 0;
+      do { row = Math.floor(Math.random() * ROWS); s2++; } while (usedRows.has(row) && s2 < 20);
+      usedRows.add(row);
+      for (let cc = 0; cc < COLS; cc++) {
+        if (grid[row][cc] && grid[row][cc].special !== 'blackhole') {
+          const pts = getCellPoints(grid[row][cc]);
+          state.levelScore += Math.round(pts);
+          state.totalScore += Math.round(pts);
+          spawnParticles(cc * CELL + CELL/2, row * CELL + CELL/2, '#74b9ff', 6, 1.2);
+          grid[row][cc] = null;
+        }
+      }
+      playCascade();
+      floatText('🌊 风暴!', CELL * 4, row * CELL + CELL/2, '#74b9ff', 'combo-text');
+    }
+    // Refill columns after cascade
+    for (let cc = 0; cc < COLS; cc++) {
+      let writeRow = ROWS - 1;
+      for (let rr = ROWS - 1; rr >= 0; rr--) {
+        if (grid[rr][cc]) {
+          if (writeRow !== rr) { grid[writeRow][cc] = grid[rr][cc]; grid[rr][cc] = null; }
+          grid[writeRow][cc].targetY = writeRow * CELL;
+          grid[writeRow][cc].y = writeRow * CELL;
+          grid[writeRow][cc].x = cc * CELL;
+          writeRow--;
+        }
+      }
+      for (let rr = writeRow; rr >= 0; rr--) {
+        grid[rr][cc] = createGem(rr, cc, { special: maybeSpecialForNewGem() });
+        grid[rr][cc].y = rr * CELL;
+        grid[rr][cc].x = cc * CELL;
+      }
+    }
+    triggerScoreRoll();
+    abilityTriggers++;
+  }
+  // Magnet pull: move same-color gems adjacent to create matches
+  if (state.abilities.magnetPull > 0) {
+    const pullCount = 1 + state.abilities.magnetPull;
+    let pulled = 0;
+    for (let attempt = 0; attempt < pullCount && attempt < 6; attempt++) {
+      // Pick a random gem, find another of same color, swap it next to it
+      const allGems = [];
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        if (grid[r][c] && grid[r][c].special !== 'blackhole' && grid[r][c].special !== 'bomb') {
+          allGems.push({r, c, type: grid[r][c].type});
+        }
+      }
+      if (allGems.length < 4) break;
+      const target = allGems[Math.floor(Math.random() * allGems.length)];
+      // Find same-color gem that's NOT adjacent
+      const sameColor = allGems.filter(g => g.type === target.type && (Math.abs(g.r - target.r) + Math.abs(g.c - target.c)) > 1);
+      if (sameColor.length === 0) continue;
+      const source = sameColor[Math.floor(Math.random() * sameColor.length)];
+      // Find empty adjacent slot to target
+      const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+      const adjSlots = dirs.map(([dr,dc]) => ({r: target.r+dr, c: target.c+dc}))
+        .filter(p => inBounds(p.r, p.c) && grid[p.r][p.c] && grid[p.r][p.c].special !== 'blackhole' && grid[p.r][p.c].type !== target.type);
+      if (adjSlots.length === 0) continue;
+      const dest = adjSlots[Math.floor(Math.random() * adjSlots.length)];
+      // Swap source with dest
+      const tmp = grid[source.r][source.c];
+      grid[source.r][source.c] = grid[dest.r][dest.c];
+      grid[dest.r][dest.c] = tmp;
+      // Fix positions
+      grid[source.r][source.c].x = source.c * CELL; grid[source.r][source.c].y = source.r * CELL;
+      grid[source.r][source.c].targetX = source.c * CELL; grid[source.r][source.c].targetY = source.r * CELL;
+      grid[dest.r][dest.c].x = dest.c * CELL; grid[dest.r][dest.c].y = dest.r * CELL;
+      grid[dest.r][dest.c].targetX = dest.c * CELL; grid[dest.r][dest.c].targetY = dest.r * CELL;
+      spawnParticles(dest.c * CELL + CELL/2, dest.r * CELL + CELL/2, GEMS[target.type].glow, 5, 0.8);
+      pulled++;
+    }
+    if (pulled > 0) {
+      playMagnet();
+      floatText('🧲 吸引!', canvas.width/2, CELL, '#74ffd6', 'bonus');
+      abilityTriggers++;
+    }
+  }
+
+  // Black hole: consume adjacent gems
+  if (state.abilities.blackHole > 0) {
+    let bhConsumed = 0;
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const gem = grid[r][c];
+        if (!gem || gem.special !== 'blackhole') continue;
+        // Pull and consume adjacent gems (not other black holes)
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dr, dc] of dirs) {
+          const nr = r + dr, nc = c + dc;
+          if (!inBounds(nr, nc)) continue;
+          const adj = grid[nr][nc];
+          if (adj && adj.special !== 'blackhole' && Math.random() < 0.35) {
+            const pts = getCellPoints(adj) * 3; // black hole bonus
+            state.levelScore += Math.round(pts);
+            state.totalScore += Math.round(pts);
+            spawnParticles(nc * CELL + CELL/2, nr * CELL + CELL/2, '#9933ff', 8, 1.5);
+            floatText('+' + Math.round(pts), nc * CELL + CELL/2, nr * CELL + CELL/2, '#cc66ff', 'bonus');
+            grid[nr][nc] = null;
+            bhConsumed++;
+          }
+        }
+      }
+    }
+    if (bhConsumed > 0) {
+      playBlackHole();
+      // Refill after black hole consumption
+      for (let cc = 0; cc < COLS; cc++) {
+        let wr = ROWS - 1;
+        for (let rr = ROWS - 1; rr >= 0; rr--) {
+          if (grid[rr][cc]) {
+            if (wr !== rr) { grid[wr][cc] = grid[rr][cc]; grid[rr][cc] = null; }
+            grid[wr][cc].targetY = wr * CELL;
+            grid[wr][cc].y = wr * CELL;
+            grid[wr][cc].x = cc * CELL;
+            wr--;
+          }
+        }
+        for (let rr = wr; rr >= 0; rr--) {
+          grid[rr][cc] = createGem(rr, cc, { special: maybeSpecialForNewGem() });
+          grid[rr][cc].y = rr * CELL;
+          grid[rr][cc].x = cc * CELL;
+        }
+      }
+      triggerScoreRoll();
+      abilityTriggers += bhConsumed;
+    }
+  }
+  return true;
+}
+
+let combo = 0;
+async function processMatches() {
+  let found = true;
+  while (found && state.gameRunning && !state.awaitingAbility) {
+    const matchData = findMatchData();
+    found = await removeAndRefill(matchData);
+  }
+  // Infinite combo: never reset
+  if (state.abilities.infiniteCombo > 0) {
+    // combo stays as-is
+    updateFrenzy(combo);
+    return;
+  }
+  // Combo shield: preserve portion of combo
+  if (state.abilities.comboShield > 0 && combo > 1) {
+    const keepRatio = Math.min(0.5 + state.abilities.comboShield * 0.1, 0.9);
+    combo = Math.floor(combo * keepRatio);
+    if (combo > 0) {
+      comboDisplay.textContent = `🛡️ 连击保留 ${combo}x`;
+      comboDisplay.style.color = '#74ffd6';
+    }
+  } else {
+    combo = 0;
+    comboDisplay.textContent = '';
+  }
+  updateFrenzy(combo);
+}
+
+function animate(duration, updateFn) {
+  return new Promise(resolve => {
+    const start = performance.now();
+    function tick(now) {
+      if (state.paused) { requestAnimationFrame(tick); return; }
+      const t = Math.min((now - start) / duration, 1);
+      updateFn(t);
+      draw();
+      if (t < 1) requestAnimationFrame(tick);
+      else resolve();
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+async function swapGems(r1, c1, r2, c2) {
+  resetHintTimer();
+  if (animating || !state.gameRunning || state.paused || state.awaitingAbility) return;
+  animating = true;
+  ensureAudio();
+  const g1 = grid[r1][c1], g2 = grid[r2][c2];
+  const x1 = g1.x, y1 = g1.y, x2 = g2.x, y2 = g2.y;
+  await animate(150, t => {
+    const ease = t * (2 - t);
+    g1.x = x1 + (x2 - x1) * ease;
+    g1.y = y1 + (y2 - y1) * ease;
+    g2.x = x2 + (x1 - x2) * ease;
+    g2.y = y2 + (y1 - y2) * ease;
+  });
+
+  grid[r1][c1] = g2; grid[r2][c2] = g1;
+  g1.targetX = c2 * CELL; g1.targetY = r2 * CELL;
+  g2.targetX = c1 * CELL; g2.targetY = r1 * CELL;
+  g1.x = g1.targetX; g1.y = g1.targetY;
+  g2.x = g2.targetX; g2.y = g2.targetY;
+
+  const matchData = findMatchData();
+  if (matchData.matched.size > 0) {
+    combo = 0;
+    playSwapSuccess();
+    await removeAndRefill(matchData);
+    await processMatches();
+    animating = false;
+    await checkLevelOutcome();
+  } else {
+    playSwapFail();
+    await animate(150, t => {
+      const ease = t * (2 - t);
+      g1.x = c2 * CELL + (c1 - c2) * CELL * ease;
+      g1.y = r2 * CELL + (r1 - r2) * CELL * ease;
+      g2.x = c1 * CELL + (c2 - c1) * CELL * ease;
+      g2.y = r1 * CELL + (r2 - r1) * CELL * ease;
+    });
+    grid[r1][c1] = g1; grid[r2][c2] = g2;
+    g1.x = c1 * CELL; g1.y = r1 * CELL; g1.targetX = c1 * CELL; g1.targetY = r1 * CELL;
+    g2.x = c2 * CELL; g2.y = r2 * CELL; g2.targetX = c2 * CELL; g2.targetY = r2 * CELL;
+  }
+  animating = false;
+  updateHUD();
+}
+
+function getCellFromPos(px, py) {
+  const rect = canvas.getBoundingClientRect();
+  const x = px - rect.left;
+  const y = py - rect.top;
+  const c = Math.floor(x / CELL);
+  const r = Math.floor(y / CELL);
+  if (r >= 0 && r < ROWS && c >= 0 && c < COLS) return { r, c };
+  return null;
+}
+function handleSelect(r, c) {
+  resetHintTimer();
+  if (!state.gameRunning || animating || state.paused || state.awaitingAbility) return;
+  if (selected) {
+    const dr = Math.abs(r - selected.r);
+    const dc = Math.abs(c - selected.c);
+    if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+      swapGems(selected.r, selected.c, r, c);
+      selected = null;
+    } else {
+      selected = { r, c };
+    }
+  } else {
+    selected = { r, c };
+    playSelect();
+  }
+  draw();
+}
+
+let dragStartPx = null;
+canvas.addEventListener('mousedown', e => {
+  if (state.paused || state.awaitingAbility) return;
+  const cell = getCellFromPos(e.clientX, e.clientY);
+  if (cell) { dragStart = cell; dragStartPx = {x: e.clientX, y: e.clientY}; }
+});
+canvas.addEventListener('mousemove', e => {
+  if (!dragStart || !dragStartPx || state.paused || state.awaitingAbility || animating || !state.gameRunning) return;
+  const dx = e.clientX - dragStartPx.x;
+  const dy = e.clientY - dragStartPx.y;
+  const threshold = CELL * 0.3;
+  if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+    let dr = 0, dc = 0;
+    if (Math.abs(dx) > Math.abs(dy)) { dc = dx > 0 ? 1 : -1; }
+    else { dr = dy > 0 ? 1 : -1; }
+    const nr = dragStart.r + dr, nc = dragStart.c + dc;
+    if (inBounds(nr, nc)) {
+      swapGems(dragStart.r, dragStart.c, nr, nc);
+    }
+    dragStart = null; dragStartPx = null;
+  }
+});
+canvas.addEventListener('mouseup', e => {
+  if (!dragStart || state.paused || state.awaitingAbility) { dragStart = null; dragStartPx = null; return; }
+  const cell = getCellFromPos(e.clientX, e.clientY);
+  if (cell && cell.r === dragStart.r && cell.c === dragStart.c) {
+    handleSelect(cell.r, cell.c);
+  }
+  dragStart = null; dragStartPx = null;
+});
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (state.paused || state.awaitingAbility) return;
+  const t = e.touches[0];
+  const cell = getCellFromPos(t.clientX, t.clientY);
+  if (cell) { dragStart = cell; dragStartPx = {x: t.clientX, y: t.clientY}; }
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!dragStart || !dragStartPx || state.paused || state.awaitingAbility || animating || !state.gameRunning) return;
+  const t = e.touches[0];
+  const dx = t.clientX - dragStartPx.x;
+  const dy = t.clientY - dragStartPx.y;
+  const threshold = CELL * 0.3;
+  if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+    let dr = 0, dc = 0;
+    if (Math.abs(dx) > Math.abs(dy)) { dc = dx > 0 ? 1 : -1; }
+    else { dr = dy > 0 ? 1 : -1; }
+    const nr = dragStart.r + dr, nc = dragStart.c + dc;
+    if (inBounds(nr, nc)) {
+      swapGems(dragStart.r, dragStart.c, nr, nc);
+    }
+    dragStart = null; dragStartPx = null;
+  }
+}, { passive: false });
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (!dragStart || state.paused || state.awaitingAbility) { dragStart = null; dragStartPx = null; return; }
+  const t = e.changedTouches[0];
+  const cell = getCellFromPos(t.clientX, t.clientY);
+  if (cell && cell.r === dragStart.r && cell.c === dragStart.c) {
+    handleSelect(cell.r, cell.c);
+  }
+  dragStart = null; dragStartPx = null;
+}, { passive: false });
+
+function hasAnyValidMove() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const dirs = [[1,0],[0,1]];
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (!inBounds(nr, nc)) continue;
+        [grid[r][c], grid[nr][nc]] = [grid[nr][nc], grid[r][c]];
+        const ok = findMatchData().matched.size > 0;
+        [grid[r][c], grid[nr][nc]] = [grid[nr][nc], grid[r][c]];
+        if (ok) return true;
+      }
+    }
+  }
+  return false;
+}
+function refillNoInitialMatches() {
+  let safety = 0;
+  let matchData = findMatchData();
+  while (matchData.matched.size > 0 && safety++ < 200) {
+    for (const key of matchData.matched) {
+      const [r, c] = parseCellKey(key);
+      grid[r][c].type = Math.floor(Math.random() * GEMS.length);
+      if (state.abilities.bombGem > 0) grid[r][c].special = maybeSpecialForNewGem();
+    }
+    matchData = findMatchData();
+  }
+  safety = 0;
+  while (!hasAnyValidMove() && safety++ < 50) {
+    randomizeBoard(false);
+  }
+}
+async function randomizeBoard(consumeCharge = true) {
+  if (!state.gameRunning || state.paused || animating || state.awaitingAbility) return;
+  if (consumeCharge && state.shufflesLeft <= 0) return;
+  if (consumeCharge) state.shufflesLeft--;
+  const flat = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) flat.push(grid[r][c]);
+  for (let i = flat.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [flat[i], flat[j]] = [flat[j], flat[i]];
+  }
+  let idx = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const gem = flat[idx++];
+      gem.targetX = c * CELL;
+      gem.targetY = r * CELL;
+      grid[r][c] = gem;
+    }
+  }
+  playShuffle();
+  flashBanner('🔄 重新洗牌', 900);
+  await animate(220, t => {
+    const ease = 1 - Math.pow(1 - t, 4);
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const gem = grid[r][c];
+        gem.x = gem.x + (gem.targetX - gem.x) * ease * 0.28;
+        gem.y = gem.y + (gem.targetY - gem.y) * ease * 0.28;
+      }
+    }
+  });
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const gem = grid[r][c];
+      gem.x = gem.targetX;
+      gem.y = gem.targetY;
+    }
+  }
+  refillNoInitialMatches();
+  updateHUD();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(async () => {
+    if (state.paused || state.awaitingAbility || !state.gameRunning) return;
+    // Time freeze: don't tick during combos
+    if (state.abilities.timeFreeze > 0 && combo > 0) return;
+    state.timeLeft -= 0.1;
+    updateHUD();
+    if (state.timeLeft <= 0) {
+      state.timeLeft = 0;
+      updateHUD();
+      clearInterval(timerInterval);
+      await handleTimerExpired();
+    }
+  }, 100);
+}
+async function handleTimerExpired() {
+  if (!state.gameRunning) return;
+  if (state.levelScore >= state.levelTarget) {
+    await completeLevel();
+    return;
+  }
+  if (state.secondChanceCharges > 0) {
+    state.secondChanceCharges--;
+    state.totalScore = state.levelStartTotalScore;
+    state.levelScore = 0;
+    combo = 0;
+    comboDisplay.textContent = '';
+    updateHUD();
+    showOverlay(
+      '💖 第二次机会',
+      `第 ${state.level} 关差一点就过了。消耗 1 次复活，马上重试这一关。`,
+      `<div class="stats">当前仍保留全部已获得能力。</div>`,
+      `<div class="overlay-actions"><button class="overlay-btn" onclick="restartCurrentLevel()">立即重试</button></div>`
+    );
+    currentOverlayMode = 'retry';
+    return;
+  }
+  endRun(false);
+}
+async function checkLevelOutcome() {
+  if (!state.gameRunning || state.awaitingAbility || animating) return;
+  if (state.levelScore >= state.levelTarget) {
+    await completeLevel();
+  } else if (!hasAnyValidMove()) {
+    if (state.shufflesLeft > 0) {
+      flashBanner('⚠️ 无可用步，建议洗牌', 1100);
+    } else {
+      await randomizeBoard(false);
+      flashBanner('↻ 自动整理棋盘', 1000);
+    }
+  }
+}
+
+function getRandomAbilityChoices(count = 3) {
+  const level = state.level;
+  const pool = Object.values(ABILITY_DEFS).filter(def => {
+    const minLv = def.minLevel || 1;
+    return level >= minLv;
+  });
+  // Weighted: legendary = rare, epic = uncommon
+  const weighted = [];
+  for (const def of pool) {
+    const tier = def.tier || 'common';
+    let weight;
+    if (tier === 'legendary') weight = 1;
+    else if (tier === 'epic') weight = 3;
+    else weight = 6;
+    // Already owned? slightly reduce weight to encourage variety
+    if (state.abilities[def.key] > 0) weight = Math.max(1, weight - 1);
+    // infiniteCombo can't stack
+    if (def.key === 'infiniteCombo' && state.abilities.infiniteCombo > 0) continue;
+    for (let i = 0; i < weight; i++) weighted.push(def);
+  }
+  const choices = [];
+  const seen = new Set();
+  // Guarantee at least 1 epic/legendary if available at this level
+  const rarePicks = pool.filter(d => (d.tier === 'epic' || d.tier === 'legendary') && !seen.has(d.key) && !(d.key === 'infiniteCombo' && state.abilities.infiniteCombo > 0));
+  if (rarePicks.length > 0 && level >= 4 && Math.random() < 0.5) {
+    const rare = rarePicks[Math.floor(Math.random() * rarePicks.length)];
+    choices.push(rare);
+    seen.add(rare.key);
+  }
+  let safety = 0;
+  while (choices.length < count && safety++ < 100) {
+    const pick = weighted[Math.floor(Math.random() * weighted.length)];
+    if (!seen.has(pick.key)) {
+      choices.push(pick);
+      seen.add(pick.key);
+    }
+  }
+  return choices;
+}
+function renderAbilitySelection() {
+  const mount = document.getElementById('ability-select');
+  if (!mount) return;
+  const choices = getRandomAbilityChoices(3);
+  mount.innerHTML = `
+    <div class="ability-grid">
+      ${choices.map(def => {
+        const tier = def.tier || 'common';
+        return `
+        <button class="ability-card tier-${tier}" data-tier="${tier}" onclick="pickAbility('${def.key}')">
+          <div class="card-icon">${def.icon}</div>
+          <div class="card-name">${def.name}</div>
+          <div class="card-desc">${def.description}</div>
+          <div class="card-tag">${def.tag}${tier !== 'common' ? ' · ' + (tier === 'legendary' ? '传说' : '史诗') : ''}</div>
+        </button>`;
+      }).join('')}
+    </div>
+  `;
+  mount.style.display = 'flex';
+}
+async function completeLevel() {
+  state.gameRunning = false;
+  state.awaitingAbility = true;
+  clearInterval(timerInterval);
+  pauseBtn.disabled = true;
+  shuffleBtn.disabled = true;
+  playLevelClear();
+  // Double down: multiply level score
+  if (state.abilities.doubleDown > 0) {
+    const ddMult = Math.pow(2, state.abilities.doubleDown);
+    const bonus = state.levelScore * (ddMult - 1);
+    state.totalScore += bonus;
+    triggerScoreRoll();
+    flashBanner(`🎰 梭哈! 本关得分 ×${ddMult}`, 1600);
+    abilityTriggers++;
+  } else {
+    flashBanner(`第 ${state.level} 关通过!`, 1400);
+  }
+  saveBestRecord(state.level, state.totalScore);
+  showOverlay(
+    '✅ 关卡通过',
+    `第 ${state.level} 关目标已达成。选 1 个能力，下一关继续加压。`,
+    `<div class="final-score">${state.levelScore.toLocaleString()}</div><div class="stats">本关目标 ${state.levelTarget.toLocaleString()} · 当前总分 ${state.totalScore.toLocaleString()}</div>`,
+    ''
+  );
+  renderAbilitySelection();
+  currentOverlayMode = 'ability';
+}
+function showOverlay(title, subtitle, middle = '', actions = '') {
+  overlay.innerHTML = `
+    <h1>${title}</h1>
+    <div class="subtitle">${subtitle}</div>
+    ${middle}
+    ${actions}
+    <div id="ability-select"></div>
+  `;
+  overlay.style.display = 'flex';
+}
+window.pickAbility = function(key) {
+  const def = ABILITY_DEFS[key];
+  if (!def || !state.awaitingAbility) return;
+  def.onGain();
+  playAbilityPick();
+  state.level++;
+  state.awaitingAbility = false;
+  startLevel(state.level);
+};
+window.restartCurrentLevel = function() {
+  if (currentOverlayMode !== 'retry') return;
+  startLevel(state.level, true);
+};
+
+function setupRun() {
+  state.level = 1;
+  state.levelTarget = getLevelTarget(1);
+  state.levelScore = 0;
+  state.totalScore = 0;
+  state.maxCombo = 0;
+  state.totalMatches = 0;
+  state.secondChanceCharges = 0;
+  state.abilities = createAbilityState();
+  state.colorMastery = Array(GEMS.length).fill(0);
+  combo = 0;
+  particles = [];
+  selected = null;
+  animating = false;
+  frenzyActive = false;
+  lastMilestone = 0;
+  rollingScore = 0;
+  rollingTotal = 0;
+  biggestHit = 0;
+  abilityTriggers = 0;
+  canvas.classList.remove('frenzy-active');
+  frenzyLabel.style.display = 'none';
+  comboBarFill.style.width = '0%';
+}
+function startLevel(level, isRetry = false) {
+  ensureAudio();
+  initSize();
+  initGrid();
+  refillNoInitialMatches();
+  // Black holes: place on board
+  if (state.abilities.blackHole > 0) {
+    const bhCount = Math.min(state.abilities.blackHole + 1, 6);
+    const positions = [];
+    let safety = 0;
+    while (positions.length < bhCount && safety++ < 50) {
+      const r = Math.floor(Math.random() * ROWS);
+      const c = Math.floor(Math.random() * COLS);
+      const key = r + ',' + c;
+      // Avoid edges and existing black holes
+      if (r > 0 && r < ROWS-1 && c > 0 && c < COLS-1 && !positions.includes(key)) {
+        positions.push(key);
+        grid[r][c] = createGem(r, c, { type: Math.floor(Math.random() * GEMS.length), special: 'blackhole' });
+      }
+    }
+  }
+  state.level = level;
+  state.levelTarget = getLevelTarget(level);
+  state.levelScore = 0;
+  rollingScore = 0;
+  state.levelMatches = 0;
+  state.timeLeft = getLevelTime();
+  state.levelStartTotalScore = state.totalScore;
+  state.shufflesLeft = state.abilities.freeShuffle;
+  state.gameRunning = true;
+  state.paused = false;
+  state.awaitingAbility = false;
+  animating = false;
+  lastTickSecond = -1;
+  combo = 0;
+  selected = null;
+  overlay.style.display = 'none';
+  pauseBtn.disabled = false;
+  pauseBtn.textContent = '⏸';
+  comboDisplay.textContent = '';
+  updateHUD();
+  draw();
+  // Supernova: explode center at level start
+  if (state.abilities.supernova > 0 && !isRetry) {
+    const radius = 1 + state.abilities.supernova;
+    const cr = Math.floor(ROWS / 2), cc = Math.floor(COLS / 2);
+    for (let rr = cr - radius; rr <= cr + radius; rr++) {
+      for (let ccc = cc - radius; ccc <= cc + radius; ccc++) {
+        if (inBounds(rr, ccc) && grid[rr][ccc]) {
+          const pts = getCellPoints(grid[rr][ccc]);
+          state.levelScore += Math.round(pts * 2);
+          state.totalScore += Math.round(pts * 2);
+          spawnParticles(ccc * CELL + CELL/2, rr * CELL + CELL/2, '#ffd76a', 8, 2);
+          grid[rr][ccc] = null;
+        }
+      }
+    }
+    // Refill
+    for (let ccc = 0; ccc < COLS; ccc++) {
+      let wr = ROWS - 1;
+      for (let rr = ROWS - 1; rr >= 0; rr--) {
+        if (grid[rr][ccc]) { grid[wr][ccc] = grid[rr][ccc]; if (wr !== rr) grid[rr][ccc] = null; grid[wr][ccc].targetY = wr * CELL; wr--; }
+      }
+      for (let rr = wr; rr >= 0; rr--) grid[rr][ccc] = createGem(rr, ccc, { y: -CELL, special: maybeSpecialForNewGem() });
+    }
+    triggerScoreRoll();
+    playSupernova();
+    flashBanner('💫 超新星!', 1200);
+    screenShake();
+    abilityTriggers++;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) { if(grid[r][c]) { grid[r][c].x=c*CELL; grid[r][c].y=r*CELL; grid[r][c].scale=1; grid[r][c].alpha=1; }}
+    refillNoInitialMatches();
+    draw();
+  }
+  resetHintTimer();
+  flashBanner(isRetry ? `第 ${level} 关重试` : `第 ${level} 关开始`, 1200);
+  startTimer();
+  startGemRain();
+}
+function startGame() {
+  setupRun();
+  startLevel(1, false);
+}
+function endRun(clearedAll) {
+  state.gameRunning = false;
+  state.paused = false;
+  state.awaitingAbility = false;
+  clearInterval(timerInterval);
+  clearInterval(gemRainTimer);
+  playGameOver();
+  saveBestRecord(state.level, state.totalScore);
+  const lbRank = saveToLeaderboard({
+    totalScore: state.totalScore,
+    level: state.level,
+    maxCombo: state.maxCombo,
+    totalMatches: state.totalMatches,
+    biggestHit: biggestHit,
+    abilities: Object.values(state.abilities).reduce((a,b)=>a+b,0),
+  });
+  showOverlay(
+    clearedAll ? '🏆 通关' : '☠️ 闯关结束',
+    clearedAll
+      ? '这趟 run 真的离谱，已经把棋盘打穿了。'
+      : `止步第 ${state.level} 关，目标 ${state.levelTarget.toLocaleString()}，本关只拿到 ${state.levelScore.toLocaleString()}。`,
+    `<div class="final-score">${state.totalScore.toLocaleString()}</div>
+     <div class="stats">最远到达第 ${state.level} 关 · 最高连击 ${state.maxCombo}x · 累计消除 ${state.totalMatches} 颗宝石</div>`,
+    `<div class="overlay-actions">
+      <button class="overlay-btn" onclick="startGame()">再来一局</button>
+      <button class="overlay-btn secondary" onclick="showMainMenu()">返回菜单</button>
+      <button class="overlay-btn secondary" onclick="showLeaderboard(${lbRank})">🏆 排行榜</button>
+    </div>`
+  );
+  currentOverlayMode = 'gameover';
+}
+window.showMainMenu = function() {
+  clearInterval(timerInterval);
+  state.gameRunning = false;
+  state.paused = false;
+  state.awaitingAbility = false;
+  overlay.innerHTML = `
+    <h1>💎 宝石闪击</h1>
+    <div class="subtitle">45 秒一关，3 选 1 叠能力。目标分会越来越高，失误也会越来越疼。</div>
+    <div class="best-row">最远 ${bestRecord.bestLevel} 关 · 最高总分 ${bestRecord.bestScore.toLocaleString()}</div>
+    <div class="overlay-actions">
+      <button class="overlay-btn" onclick="startGame()">开始闯关</button>
+      <button class="overlay-btn secondary" onclick="showLeaderboard()">🏆 排行榜</button>
+    </div>
+    <div id="ability-select"></div>
+  `;
+  overlay.style.display = 'flex';
+  currentOverlayMode = 'menu';
+};
+window.startGame = startGame;
+
+function togglePause() {
+  if (!state.gameRunning || state.awaitingAbility) return;
+  state.paused = !state.paused;
+  pauseBtn.textContent = state.paused ? '▶' : '⏸';
+  if (state.paused) {
+    clearInterval(timerInterval);
+    showOverlay(
+      '⏸ 暂停中',
+      '看这里，局还在。休息一下，准备好再继续。',
+      `<div class="stats">第 ${state.level} 关 · 本关 ${state.levelScore.toLocaleString()} / ${state.levelTarget.toLocaleString()} · 总分 ${state.totalScore.toLocaleString()}</div>`,
+      `<div class="overlay-actions">
+        <button class="overlay-btn" onclick="togglePause()">继续游戏</button>
+        <button class="overlay-btn secondary" onclick="showMainMenu()">退出到菜单</button>
+      </div>`
+    );
+    currentOverlayMode = 'pause';
+  } else {
+    overlay.style.display = 'none';
+    startTimer();
+  startGemRain();
+  }
+}
+window.togglePause = togglePause;
+
+pauseBtn.addEventListener('click', togglePause);
+shuffleBtn.addEventListener('click', () => randomizeBoard(true));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
+    if (state.gameRunning) togglePause();
+  }
+  if ((e.key === 'r' || e.key === 'R') && state.gameRunning && state.shufflesLeft > 0) {
+    randomizeBoard(true);
+  }
+});
+
+
+// === HINT SYSTEM ===
+let hintTimer = null;
+let hintCells = null;
+let hintAnimFrame = null;
+const HINT_DELAY = 4000; // 4 seconds of inactivity
+const hintBtn = document.getElementById('hint-btn');
+
+function resetHintTimer() {
+  clearTimeout(hintTimer);
+  clearHint();
+  if (state.gameRunning && !state.paused && !state.awaitingAbility && !animating) {
+    hintTimer = setTimeout(showHint, HINT_DELAY);
+  }
+}
+
+function findHintMove() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const dirs = [[1,0],[0,1]];
+      for (const [dr, dc] of dirs) {
+        const nr = r + dr, nc = c + dc;
+        if (!inBounds(nr, nc)) continue;
+        [grid[r][c], grid[nr][nc]] = [grid[nr][nc], grid[r][c]];
+        const ok = findMatchData().matched.size > 0;
+        [grid[r][c], grid[nr][nc]] = [grid[nr][nc], grid[r][c]];
+        if (ok) return [{r, c}, {r: nr, c: nc}];
+      }
+    }
+  }
+  return null;
+}
+
+function showHint() {
+  if (!state.gameRunning || state.paused || animating || state.awaitingAbility) return;
+  const move = findHintMove();
+  if (!move) return;
+  hintCells = move;
+  playHint();
+}
+
+function clearHint() {
+  hintCells = null;
+}
+
+function drawHintOverlay() {
+  if (!hintCells) return;
+  const t = Date.now() / 400;
+  const pulse = 0.5 + Math.sin(t) * 0.5;
+  for (const cell of hintCells) {
+    const cx = cell.c * CELL + CELL / 2;
+    const cy = cell.r * CELL + CELL / 2;
+    const radius = CELL / 2 - PADDING;
+    ctx.strokeStyle = `rgba(255, 215, 106, ${0.4 + pulse * 0.6})`;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.shadowColor = '#ffd76a';
+    ctx.shadowBlur = 12 + pulse * 10;
+    ctx.strokeStyle = `rgba(255, 215, 106, ${pulse * 0.3})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+}
+
+hintBtn.addEventListener('click', () => {
+  if (!state.gameRunning || state.paused || animating || state.awaitingAbility) return;
+  showHint();
+});
+
+
+// === GEM RAIN ===
+let gemRainTimer = null;
+function startGemRain() {
+  clearInterval(gemRainTimer);
+  if (state.abilities.gemRain <= 0) return;
+  const interval = Math.max(2000, 5000 - (state.abilities.gemRain - 1) * 1000);
+  gemRainTimer = setInterval(async () => {
+    if (!state.gameRunning || state.paused || animating || state.awaitingAbility) return;
+    // Find most common type
+    const counts = Array(GEMS.length).fill(0);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      if (grid[r][c]) counts[grid[r][c].type]++;
+    }
+    const maxType = counts.indexOf(Math.max(...counts));
+    let cleared = 0;
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      if (grid[r][c] && grid[r][c].type === maxType) {
+        const pts = getCellPoints(grid[r][c]);
+        state.levelScore += Math.round(pts);
+        state.totalScore += Math.round(pts);
+        spawnParticles(c * CELL + CELL/2, r * CELL + CELL/2, GEMS[maxType].glow, 5, 1);
+        grid[r][c] = null;
+        cleared++;
+      }
+    }
+    if (cleared > 0) {
+      floatText('🌈 宝石雨 ×' + cleared, canvas.width/2, canvas.height/2, '#ffd76a', 'mega');
+      // Refill
+      for (let cc = 0; cc < COLS; cc++) {
+        let wr = ROWS - 1;
+        for (let rr = ROWS - 1; rr >= 0; rr--) {
+          if (grid[rr][cc]) { grid[wr][cc] = grid[rr][cc]; if (wr !== rr) grid[rr][cc] = null; grid[wr][cc].targetY = wr * CELL; wr--; }
+        }
+        for (let rr = wr; rr >= 0; rr--) grid[rr][cc] = createGem(rr, cc, { y: -CELL, special: maybeSpecialForNewGem() });
+      }
+      for (let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) { if(grid[r][c]) { grid[r][c].x=c*CELL; grid[r][c].y=r*CELL; grid[r][c].scale=1; grid[r][c].alpha=1; }}
+      triggerScoreRoll();
+      screenShake();
+      playBigMatch();
+      abilityTriggers++;
+      draw();
+    }
+  }, interval);
+}
+
+function gameLoop() {
+  if (!state.paused) updateParticles();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+window.addEventListener('resize', () => { initSize(); draw(); });
+startBtn.addEventListener('click', startGame);
+renderBestRecord();
+initSize();
+initGrid();
+refillNoInitialMatches();
+updateHUD();
+draw();
+gameLoop();
+</script>
+</body>
+</html>
