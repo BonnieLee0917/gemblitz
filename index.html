@@ -403,6 +403,7 @@ canvas {
 }
 @media (max-width: 640px) {
   #game-container { width: min(100vw - 14px, 520px); gap: 6px; }
+  body { justify-content: flex-start; padding-top: env(safe-area-inset-top, 8px); }
   #topbar { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
   .hud-card { min-height: 44px; padding: 6px 8px; }
   .hud-card .label { font-size: 9px; margin-bottom: 2px; }
