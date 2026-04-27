@@ -1577,7 +1577,11 @@ function renderBestRecord() {
 
 function initSize() {
   const maxW = Math.min(window.innerWidth - 14, 560);
-  const maxH = (window.visualViewport?.height || window.innerHeight) - (window.innerWidth <= 640 ? 70 : 180);
+  const vh = window.visualViewport?.height || window.innerHeight;
+  const topbar = document.getElementById('topbar');
+  const midbar = document.getElementById('midbar');
+  const uiH = (topbar ? topbar.offsetHeight : 0) + (midbar ? midbar.offsetHeight : 0) + 16;
+  const maxH = vh - uiH;
   const size = Math.max(280, Math.min(maxW, maxH));
   CELL = Math.floor(size / COLS);
   PADDING = Math.floor(CELL * 0.06);
