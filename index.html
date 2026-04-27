@@ -33,12 +33,15 @@ body {
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: manipulation;
+  overscroll-behavior: none;
 }
 #game-container {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  touch-action: none;
   gap: 12px;
   width: min(100vw - 20px, 560px);
 }
@@ -735,7 +738,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
   <div id="midbar">
     <div id="combo-display"></div>
     <button id="shuffle-btn" class="icon-btn" title="免费洗牌">🔄 <span id="shuffle-count">0</span></button>
-    <button id="lb-btn" class="icon-btn" title="排行榜" onclick="showLeaderboard()">🏆</button>
     <button id="hint-btn" class="icon-btn" title="提示">💡</button>
     <button id="pause-btn" class="icon-btn" title="暂停">⏸</button>
   </div>
@@ -1577,8 +1579,12 @@ function initSize() {
   const size = Math.max(280, Math.min(maxW, maxH));
   CELL = Math.floor(size / COLS);
   PADDING = Math.floor(CELL * 0.06);
-  canvas.width = CELL * COLS;
-  canvas.height = CELL * ROWS;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = CELL * COLS * dpr;
+  canvas.height = CELL * ROWS * dpr;
+  canvas.style.width = (CELL * COLS) + 'px';
+  canvas.style.height = (CELL * ROWS) + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 function createGem(r, c, opts = {}) {
   const gem = {
@@ -3131,6 +3137,7 @@ function togglePause() {
       `<div class="stats">第 ${state.level} 关 · 本关 ${state.levelScore.toLocaleString()} / ${state.levelTarget.toLocaleString()} · 总分 ${state.totalScore.toLocaleString()}</div>`,
       `<div class="overlay-actions">
         <button class="overlay-btn" onclick="togglePause()">继续游戏</button>
+        <button class="overlay-btn secondary" onclick="showLeaderboard()">🏆 排行榜</button>
         <button class="overlay-btn secondary" onclick="showMainMenu()">退出到菜单</button>
       </div>`
     );
@@ -3318,7 +3325,7 @@ async function submitOnlineScore(name, entry) {
   try {
     const r = await fetch(LB_API, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ name, totalScore: entry.totalScore, level: entry.level, maxCombo: entry.maxCombo })
+      body: JSON.stringify({ name, totalScore: entry.totalScore, level: entry.level, maxCombo: entry.maxCombo, date: new Date().toISOString().slice(0,10) })
     });
     return await r.json();
   } catch(e) { return null; }
@@ -3362,10 +3369,10 @@ async function showLeaderboard(highlightIdx) {
 
     const rows = data.map((e, i) => {
       const isYou = playerName && e.name === playerName;
-      return `<tr class="${isYou?'highlight':''}"><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td${isYou?' class="lb-you"':''}>${e.name}${isYou?' (你)':''}</td><td>${e.totalScore.toLocaleString()}</td><td>第${e.level}关</td><td>${e.maxCombo}x</td></tr>`;
+      return `<tr class="${isYou?'highlight':''}"><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td${isYou?' class="lb-you"':''}>${e.name}${isYou?' (你)':''}</td><td>${e.totalScore.toLocaleString()}</td><td>第${e.level}关</td><td>${e.maxCombo}x</td><td>${e.date||''}</td></tr>`;
     }).join('');
 
-    ov.innerHTML = `<div class="lb-container"><div class="lb-title">🏆 排行榜</div>${tabs}${namePrompt}${data.length===0?'<div class="lb-empty">成为第一个上榜的人！</div>':`<table class="lb-table"><thead><tr><th>#</th><th>玩家</th><th>总分</th><th>最远</th><th>连击</th></tr></thead><tbody>${rows}</tbody></table>`}<div style="text-align:center"><button class="lb-close" onclick="hideLeaderboard()">关闭</button></div></div>`;
+    ov.innerHTML = `<div class="lb-container"><div class="lb-title">🏆 排行榜</div>${tabs}${namePrompt}${data.length===0?'<div class="lb-empty">成为第一个上榜的人！</div>':`<table class="lb-table"><thead><tr><th>#</th><th>玩家</th><th>总分</th><th>最远</th><th>连击</th><th>日期</th></tr></thead><tbody>${rows}</tbody></table>`}<div style="text-align:center"><button class="lb-close" onclick="hideLeaderboard()">关闭</button></div></div>`;
   } else {
     const lb = loadLeaderboard();
     const rows = lb.map((e, i) => `<tr class="${i===highlightIdx?'highlight':''}"><td>${i<3?['🥇','🥈','🥉'][i]:i+1}</td><td>${e.totalScore.toLocaleString()}</td><td>第${e.level}关</td><td>${e.maxCombo}x</td><td>${e.date||''}</td></tr>`).join('');
