@@ -777,9 +777,51 @@ let audioCtx = null;
 function ensureAudio() {
   if (!audioCtx) audioCtx = new AudioCtx();
   if (audioCtx.state === 'suspended') audioCtx.resume();
+  loadSFX();
+}
+// === Sound Effect Loader ===
+const SFX = {};
+const SFX_FILES = {
+  match: 'sfx/match.ogg',
+  bigmatch: 'sfx/bigmatch.ogg',
+  levelclear: 'sfx/levelclear.ogg',
+  gameover: 'sfx/gameover.ogg',
+  bomb: 'sfx/bomb.ogg',
+  select: 'sfx/select.ogg',
+  swapfail: 'sfx/swapfail.ogg',
+  countdown: 'sfx/countdown.ogg',
+  ability: 'sfx/ability.ogg',
+};
+let sfxLoaded = false;
+function loadSFX() {
+  if (sfxLoaded) return;
+  sfxLoaded = true;
+  Object.entries(SFX_FILES).forEach(([key, url]) => {
+    fetch(url).then(r => r.arrayBuffer()).then(buf => {
+      audioCtx.decodeAudioData(buf, decoded => { SFX[key] = decoded; });
+    }).catch(() => {});
+  });
+}
+function playSFX(name, volume = 0.5, playbackRate = 1) {
+  ensureAudio();
+  loadSFX();
+  const buf = SFX[name];
+  if (!buf) return false;
+  const source = audioCtx.createBufferSource();
+  source.buffer = buf;
+  source.playbackRate.value = playbackRate;
+  const gain = audioCtx.createGain();
+  gain.gain.value = volume;
+  source.connect(gain);
+  gain.connect(audioCtx.destination);
+  source.start();
+  return true;
 }
 function playMatch(combo) {
   ensureAudio();
+  loadSFX();
+  const rate = 1 + Math.min(combo, 8) * 0.08;
+  if (playSFX('match', 0.4, rate)) return;
   const t = audioCtx.currentTime;
   const scale = [523, 587, 659, 698, 784, 880, 988, 1047];
   const freq = scale[Math.min(combo, scale.length - 1)];
@@ -811,6 +853,8 @@ function playMatch(combo) {
 }
 function playBigMatch() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('bigmatch', 0.5)) return;
   const t = audioCtx.currentTime;
   [523, 659, 784, 1047].forEach((f, i) => {
     const o = audioCtx.createOscillator();
@@ -835,6 +879,8 @@ function playBigMatch() {
 }
 function playSwapFail() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('swapfail', 0.4)) return;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0.1, audioCtx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
@@ -848,6 +894,8 @@ function playSwapFail() {
 }
 function playCountdown() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('countdown', 0.3)) return;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0.12, audioCtx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
@@ -860,6 +908,8 @@ function playCountdown() {
 }
 function playGameOver() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('gameover', 0.5)) return;
   const t = audioCtx.currentTime;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0.13, t);
@@ -885,6 +935,8 @@ function playGameOver() {
 }
 function playLevelClear() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('levelclear', 0.5)) return;
   const t = audioCtx.currentTime;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0.16, t);
@@ -911,6 +963,8 @@ function playLevelClear() {
 }
 function playBomb() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('bomb', 0.6)) return;
   const t = audioCtx.currentTime;
   // Punchy noise burst
   const bufSize = Math.floor(audioCtx.sampleRate * 0.25);
@@ -948,6 +1002,8 @@ function playBomb() {
 }
 function playAbilityPick() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('ability', 0.5)) return;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0.18, audioCtx.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
@@ -964,6 +1020,8 @@ function playAbilityPick() {
 
 function playSelect() {
   ensureAudio();
+  loadSFX();
+  if (playSFX('select', 0.3)) return;
   const t = audioCtx.currentTime;
   const o = audioCtx.createOscillator();
   o.type = 'sine';
