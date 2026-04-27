@@ -1134,13 +1134,13 @@ const BASE_TARGET = 300;
 const TARGET_GROWTH = 1.28; // exponential growth per level
 const SAVE_KEY = 'gemBlitzRogueSave';
 const GEMS = [
-  { color: '#e74c3c', glow: '#ff6b6b', symbol: '🔴', name: '红宝石' },
-  { color: '#27ae60', glow: '#6fcf97', symbol: '🟢', name: '翡翠' },
-  { color: '#2980ff', glow: '#74b9ff', symbol: '🔷', name: '蓝宝石' },
-  { color: '#f1c40f', glow: '#fed330', symbol: '⭐', name: '黄玉' },
-  { color: '#9b59b6', glow: '#c39bd3', symbol: '🟣', name: '紫晶' },
-  { color: '#ffffff', glow: '#dfe6e9', symbol: '💎', name: '钻石' },
-  { color: '#00cec9', glow: '#81ecec', symbol: '🧊', name: '海蓝' },
+  { color: '#e74c3c', glow: '#ff6b6b', symbol: '◆', name: '红宝石' },
+  { color: '#27ae60', glow: '#6fcf97', symbol: '⬡', name: '翡翠' },
+  { color: '#2980ff', glow: '#74b9ff', symbol: '●', name: '蓝宝石' },
+  { color: '#f1c40f', glow: '#fed330', symbol: '△', name: '黄玉' },
+  { color: '#9b59b6', glow: '#c39bd3', symbol: '☆', name: '紫晶' },
+  { color: '#ffffff', glow: '#dfe6e9', symbol: '◇', name: '钻石' },
+  { color: '#00cec9', glow: '#81ecec', symbol: '💧', name: '海蓝' },
 ];
 const ABILITY_DEFS = {
   flameTouch: {
@@ -1587,6 +1587,61 @@ function renderAbilities() {
   }).join('');
 }
 
+function drawGemShape(ctx, type, cx, cy, radius) {
+  ctx.beginPath();
+  switch(type) {
+    case 0: // 菱形
+      ctx.moveTo(cx, cy - radius);
+      ctx.lineTo(cx + radius * 0.7, cy);
+      ctx.lineTo(cx, cy + radius);
+      ctx.lineTo(cx - radius * 0.7, cy);
+      ctx.closePath();
+      break;
+    case 1: // 六边形
+      for (let i = 0; i < 6; i++) {
+        const angle = Math.PI / 6 + (Math.PI * 2 / 6) * i;
+        const px = cx + Math.cos(angle) * radius;
+        const py = cy + Math.sin(angle) * radius;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    case 2: // 圆形
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      break;
+    case 3: // 三角形
+      ctx.moveTo(cx, cy - radius);
+      ctx.lineTo(cx + radius * 0.87, cy + radius * 0.5);
+      ctx.lineTo(cx - radius * 0.87, cy + radius * 0.5);
+      ctx.closePath();
+      break;
+    case 4: // 五角星
+      for (let i = 0; i < 10; i++) {
+        const angle = -Math.PI / 2 + (Math.PI * 2 / 10) * i;
+        const r = i % 2 === 0 ? radius : radius * 0.45;
+        const px = cx + Math.cos(angle) * r;
+        const py = cy + Math.sin(angle) * r;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      break;
+    case 5: // 方形（45度旋转）
+      ctx.moveTo(cx, cy - radius);
+      ctx.lineTo(cx + radius, cy);
+      ctx.lineTo(cx, cy + radius);
+      ctx.lineTo(cx - radius, cy);
+      ctx.closePath();
+      break;
+    case 6: // 水滴形
+      ctx.moveTo(cx, cy - radius);
+      ctx.quadraticCurveTo(cx + radius * 0.8, cy - radius * 0.2, cx + radius * 0.6, cy + radius * 0.3);
+      ctx.arc(cx, cy + radius * 0.3, radius * 0.6, 0, Math.PI, false);
+      ctx.quadraticCurveTo(cx - radius * 0.8, cy - radius * 0.2, cx, cy - radius);
+      ctx.closePath();
+      break;
+  }
+}
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const boardGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -1621,13 +1676,21 @@ function draw() {
       grad.addColorStop(0, g.glow);
       grad.addColorStop(1, g.color);
       ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      drawGemShape(ctx, gem.type, cx, cy, radius);
       ctx.fill();
-
+      // 边线
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 1.5;
+      drawGemShape(ctx, gem.type, cx, cy, radius);
+      ctx.stroke();
+      // 切面线（钻石）
       if (gem.type === 5) {
-        ctx.strokeStyle = 'rgba(180,180,200,0.55)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(cx - radius * 0.5, cy);
+        ctx.lineTo(cx, cy - radius * 0.5);
+        ctx.lineTo(cx + radius * 0.5, cy);
         ctx.stroke();
       }
 
@@ -1636,11 +1699,6 @@ function draw() {
       ctx.arc(cx - radius*0.2, cy - radius*0.24, radius*0.34, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.fillStyle = gem.type === 5 ? 'rgba(100,100,120,0.78)' : 'rgba(255,255,255,0.92)';
-      ctx.font = `${Math.floor(radius * 0.8)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(g.symbol, cx, cy + 1);
 
       if (gem.special === 'bomb') {
         ctx.fillStyle = '#1c1631';
