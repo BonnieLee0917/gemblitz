@@ -2859,6 +2859,7 @@ function endRun(clearedAll) {
   );
   currentOverlayMode = 'gameover';
 }
+window.showNamePrompt = showNamePrompt;
 window.showChangelog = function() {
   overlay.innerHTML = `
     <h1>\ud83d\udccb \u66f4\u65b0\u8bb0\u5f55</h1>
@@ -2891,7 +2892,7 @@ window.showMainMenu = function() {
     <div class="subtitle">60 秒总时间，过关不重置，3 选 1 叠能力。目标分越来越高，时间不等人。</div>
     <div class="best-row">最远 ${bestRecord.bestLevel} 关 · 最高总分 ${bestRecord.bestScore.toLocaleString()}</div>
     <div class="overlay-actions">
-      <button class="overlay-btn" onclick="startGame()">开始闯关</button>
+      <button class="overlay-btn" onclick="if(!getPlayerName()){showNamePrompt(startGame)}else{startGame()}">开始闯关</button>
       <button class="overlay-btn secondary" onclick="showLeaderboard()">🏆 排行榜</button>
       <button class="overlay-btn secondary" onclick="showChangelog()">📋 更新记录</button>
     </div>
@@ -3171,7 +3172,39 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 window.addEventListener('resize', () => { initSize(); draw(); });
-startBtn.addEventListener('click', startGame);
+startBtn.addEventListener('click', function() {
+  if (!getPlayerName()) {
+    showNamePrompt(function() { startGame(); });
+  } else {
+    startGame();
+  }
+});
+
+function showNamePrompt(callback) {
+  const ov = document.getElementById('overlay');
+  ov.innerHTML = `
+    <h1>👋 欢迎</h1>
+    <div class="subtitle">输入你的名字，分数将记录到全球排行榜</div>
+    <div class="name-input-row" style="margin:20px auto;max-width:300px">
+      <input id="name-prompt-input" type="text" placeholder="你的名字" maxlength="16" style="flex:1;padding:12px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#f4f5ff;font-size:16px;outline:none" />
+    </div>
+    <div class="overlay-actions">
+      <button class="overlay-btn" id="name-confirm-btn">开始闯关 🚀</button>
+    </div>
+  `;
+  ov.style.display = 'flex';
+  const input = document.getElementById('name-prompt-input');
+  const btn = document.getElementById('name-confirm-btn');
+  input.focus();
+  function confirm() {
+    const name = input.value.trim();
+    if (!name) { input.style.borderColor = '#ff4444'; input.setAttribute('placeholder', '请输入名字！'); return; }
+    setPlayerName(name);
+    if (callback) callback();
+  }
+  btn.addEventListener('click', confirm);
+  input.addEventListener('keydown', function(e) { if (e.key === 'Enter') confirm(); });
+}
 renderBestRecord();
 initSize();
 initGrid();
