@@ -3062,7 +3062,9 @@ function startLevel(level, isRetry = false) {
   if (level === 1 || isRetry) state.timeLeft = getLevelTime();  // 总倒计时：只在开局和重试时重置
   // 过关奖励时间：每过一关 +15 秒
   if (level > 1 && !isRetry) {
-    state.timeLeft += 15;
+    // 阶梯递减加时
+    const bonus = level <= 5 ? 15 : level <= 10 ? 10 : level <= 15 ? 5 : 0;
+    if (bonus > 0) state.timeLeft += bonus;
   }
   state.levelStartTotalScore = state.totalScore;
   state.shufflesLeft = state.abilities.freeShuffle;
