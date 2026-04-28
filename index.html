@@ -2463,6 +2463,9 @@ async function removeAndRefill(matchData) {
     triggerScoreRoll();
     abilityTriggers++;
   }
+  // Magnet pull + Fate link: only trigger ONCE per swap (not per chain step)
+  if (!chainAbilitiesTriggered) {
+    chainAbilitiesTriggered = true;
   // Magnet pull: move same-color gems adjacent to create matches
   if (state.abilities.magnetPull > 0) {
     const pullCount = 1 + state.abilities.magnetPull;
@@ -2527,6 +2530,7 @@ async function removeAndRefill(matchData) {
       }
     }
   }
+  } // end chainAbilitiesTriggered guard
 
   // Black hole: consume adjacent gems
   if (state.abilities.blackHole > 0) {
@@ -2581,12 +2585,14 @@ async function removeAndRefill(matchData) {
 }
 
 let combo = 0;
+let chainAbilitiesTriggered = false;
 async function processMatches() {
   let found = true;
   while (found && state.gameRunning && !state.awaitingAbility) {
     const matchData = findMatchData();
     found = await removeAndRefill(matchData);
   }
+  chainAbilitiesTriggered = false;
   // Combo shield: preserve portion of combo
   if (state.abilities.comboShield > 0 && combo > 1) {
     const keepRatio = Math.min(0.5 + state.abilities.comboShield * 0.1, 0.9);
