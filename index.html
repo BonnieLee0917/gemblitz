@@ -770,7 +770,7 @@ html, body { overflow-x: hidden; max-width: 100vw; }
       <button class="overlay-btn secondary" onclick="showLeaderboard()">🏆 排行榜</button>
       <button class="overlay-btn secondary" onclick="showChangelog()">📋 更新记录</button>
     </div>
-    <div style="margin-top:16px;font-size:12px;color:#666;">v2.0</div>
+    <div style="margin-top:16px;font-size:12px;color:#666;">v2.1</div>
     <div id="ability-select"></div>
   </div>
 </div>
@@ -1253,28 +1253,29 @@ function darken(hex, amount) {
 }
 const ABILITY_DEFS = {
   flameTouch: {
-    key: 'flameTouch', icon: '🔥', name: '烈焰之触', tag: '爆发',
-    description: '每次 4+ 消除后，额外引爆周围十字范围。重复获得可扩大范围。',
+    key: 'flameTouch', icon: '🔥', name: '烈焰之触', tag: '史诗',
+    description: '4+消除引爆十字',
+    tier: 'epic', minLevel: 4,
     onGain() { state.abilities.flameTouch++; }
   },
   scoreStreak: {
     key: 'scoreStreak', icon: '🔥', name: '得分狂热', tag: '得分',
-    description: '每次消除基础分+15。叠加后越来越夸张，后期每次消除白送大量分数。',
+    description: '每次消除+15分',
     onGain() { state.abilities.scoreStreak++; }
   },
   comboMaster: {
     key: 'comboMaster', icon: '📈', name: '连击大师', tag: '节奏',
-    description: '连击倍率额外 +0.5。叠加后，滚雪球速度会明显加快。',
+    description: '连击倍率+0.5',
     onGain() { state.abilities.comboMaster++; }
   },
   timeDilation: {
     key: 'timeDilation', icon: '⏳', name: '时间膨胀', tag: '续航',
-    description: '每关额外 +8 秒。压力会小很多，而且会稳定变强。',
+    description: '每关+5s',
     onGain() { state.abilities.timeDilation++; }
   },
   secondChance: {
     key: 'secondChance', icon: '💖', name: '第二次机会', tag: '续命',
-    description: '闯关失败时可原地重试一次。重复获得会增加可用次数。',
+    description: '失败可重试1次',
     onGain() {
       state.abilities.secondChance++;
       state.secondChanceCharges++;
@@ -1282,91 +1283,104 @@ const ABILITY_DEFS = {
   },
   freeShuffle: {
     key: 'freeShuffle', icon: '🔄', name: '免费洗牌', tag: '策略',
-    description: '每关获得 1 次免费洗牌。重复获得会提高每关可用次数。',
+    description: '每关+1次洗牌',
     onGain() { state.abilities.freeShuffle++; }
   },
   bombGem: {
     key: 'bombGem', icon: '💣', name: '炸弹宝石', tag: '特殊',
-    description: '棋盘会随机出现炸弹宝石，参与消除时触发 3×3 爆炸。叠加提高生成概率。',
+    description: '随机生成炸弹宝石',
     onGain() { state.abilities.bombGem++; }
   },
   lightning: {
-    key: 'lightning', icon: '⚡', name: '闪电链', tag: '特殊',
-    description: '5+ 消除时额外电掉同色宝石。重复获得会增加连锁消除数量。',
+    key: 'lightning', icon: '⚡', name: '闪电链', tag: '史诗',
+    description: '5+消除电掉同色',
+    tier: 'epic', minLevel: 4,
     onGain() { state.abilities.lightning++; }
   },
 
   greed: {
     key: 'greed', icon: '💰', name: '贪婪之心', tag: '得分',
-    description: '全局得分永久 +30%。叠加后越来越夸张。',
+    description: '全局得分+30%',
     onGain() { state.abilities.greed++; }
   },
   comboShield: {
     key: 'comboShield', icon: '🛡️', name: '连击护盾', tag: '节奏',
-    description: '连击断裂时保留一半连击数，而不是归零。叠加提高保留比例。',
+    description: '断裂保留一半连击',
     onGain() { state.abilities.comboShield++; }
   },
   magnetPull: {
     key: 'magnetPull', icon: '🧲', name: '磁力吸引', tag: '策略',
-    description: '每次消除后，随机将2颗同色宝石移到相邻位置，制造连锁机会。叠加增加数量。',
+    description: '消除后移动同色制造连锁',
     onGain() { state.abilities.magnetPull++; }
   },
   // === EPIC ABILITIES (appear after level 4) ===
   cascade: {
-    key: 'cascade', icon: '🌊', name: '连锁风暴', tag: '史诗',
-    description: '每次消除后，棋盘随机一行整行消除。叠加增加行数。',
-    tier: 'epic', minLevel: 4,
+    key: 'cascade', icon: '🌊', name: '连锁风暴', tag: '传说',
+    description: '每次消除整行清除',
+    tier: 'legendary', minLevel: 8,
     onGain() { state.abilities.cascade++; }
   },
   midas: {
     key: 'midas', icon: '👑', name: '点石成金', tag: '史诗',
-    description: '每消除10颗宝石，随机将一颗普通宝石变为炸弹。叠加降低触发门槛。',
+    description: '每10颗变炸弹',
     tier: 'epic', minLevel: 4,
     onGain() { state.abilities.midas++; }
   },
 
   critStrike: {
     key: 'critStrike', icon: '⚔️', name: '暴击', tag: '史诗',
-    description: '每次消除有20%概率得分翻倍。叠加提高暴击率和倍率。',
+    description: '20%概率得分翻倍',
     tier: 'epic', minLevel: 4,
     onGain() { state.abilities.critStrike++; }
   },
   vortex: {
     key: 'vortex', icon: '🌀', name: '漩涡吞噬', tag: '史诗',
-    description: '5+消除时，额外吞噬目标周围2格内所有宝石。叠加扩大范围。',
+    description: '5+消除吞周围2格',
     tier: 'epic', minLevel: 5,
     onGain() { state.abilities.vortex++; }
+  },
+  fateLink: {
+    key: 'fateLink', icon: '🔗', name: '命运链接', tag: '史诗',
+    description: '消除时概率变相邻为同色',
+    tier: 'epic', minLevel: 4,
+    onGain() { state.abilities.fateLink++; }
   },
   // === LEGENDARY ABILITIES (appear after level 8, very rare) ===
   supernova: {
     key: 'supernova', icon: '💫', name: '超新星', tag: '传说',
-    description: '每过一关，下一关开始时自动引爆棋盘中心3×3区域。叠加扩大爆炸范围。',
+    description: '过关自动炸中心3×3',
     tier: 'legendary', minLevel: 8,
     onGain() { state.abilities.supernova++; }
   },
   infiniteCombo: {
     key: 'infiniteCombo', icon: '♾️', name: '无尽连击', tag: '传说',
-    description: '连击倍率上限移除，且连击永远不会断（本关内）。不可叠加。',
+    description: '连击倍率上限翻倍',
     tier: 'legendary', minLevel: 8,
-    onGain() { state.abilities.infiniteCombo = 1; }
+    onGain() { state.abilities.infiniteCombo++; }
   },
   gemRain: {
     key: 'gemRain', icon: '🌈', name: '宝石雨', tag: '传说',
-    description: '每5秒自动消除棋盘上数量最多的一种颜色的所有宝石。叠加缩短间隔。',
+    description: '每10s自动消最多颜色',
     tier: 'legendary', minLevel: 10,
     onGain() { state.abilities.gemRain++; }
   },
   blackHole: {
     key: 'blackHole', icon: '🕳️', name: '黑洞', tag: '传说',
-    description: '棋盘随机出现黑洞格，任何宝石落入都会被吞噬并计分，还会吸引周围宝石。叠加增加黑洞数。',
+    description: '随机黑洞吞噬计分',
     tier: 'legendary', minLevel: 10,
     onGain() { state.abilities.blackHole++; }
   },
   doubleDown: {
     key: 'doubleDown', icon: '🎰', name: '梭哈', tag: '传说',
-    description: '每关结束时，本关得分直接翻倍计入总分。叠加继续翻倍。',
+    description: '过关得分翻倍',
     tier: 'legendary', minLevel: 8,
     onGain() { state.abilities.doubleDown++; }
+  },
+  deathPact: {
+    key: 'deathPact', icon: '💀', name: '死神契约', tag: '传说',
+    description: '得分×2，倒计时×1.5',
+    tier: 'legendary', minLevel: 8,
+    onGain() { state.abilities.deathPact++; }
   },
 };
 
@@ -1549,6 +1563,8 @@ function createAbilityState() {
     gemRain: 0,
     blackHole: 0,
     doubleDown: 0,
+    fateLink: 0,
+    deathPact: 0,
   };
 }
 
@@ -1629,7 +1645,7 @@ function getLevelTarget(level) {
   return Math.round(BASE_TARGET * Math.pow(TARGET_GROWTH, level - 1));
 }
 function getLevelTime() {
-  return BASE_LEVEL_TIME + state.abilities.timeDilation * 8;
+  return BASE_LEVEL_TIME + state.abilities.timeDilation * 5;
 }
 
 function updateHUD() {
@@ -2307,7 +2323,8 @@ async function removeAndRefill(matchData) {
     if (!gem) continue;
     basePoints += getCellPoints(gem);
   }
-  const comboMult = combo * (1 + state.abilities.comboMaster * 0.5);
+  const maxComboMult = state.abilities.infiniteCombo > 0 ? 20 : 10;
+  const comboMult = Math.min(combo * (1 + state.abilities.comboMaster * 0.5), maxComboMult);
   const greedMult = 1 + state.abilities.greed * 0.3;
   const frenzyMult = frenzyActive ? 2 : 1;
   // Crit strike
@@ -2318,7 +2335,8 @@ async function removeAndRefill(matchData) {
     const critDamage = 2 + (state.abilities.critStrike - 1) * 0.5;
     if (Math.random() < critChance) { critMult = critDamage; isCrit = true; }
   }
-  const totalMult = comboMult * greedMult * frenzyMult * critMult;
+  const deathMult = state.abilities.deathPact > 0 ? 1 + state.abilities.deathPact : 1;
+  const totalMult = comboMult * greedMult * frenzyMult * critMult * deathMult;
   const points = Math.round(basePoints * totalMult);
   state.levelScore += points;
   state.totalScore += points;
@@ -2505,6 +2523,28 @@ async function removeAndRefill(matchData) {
     }
   }
 
+  // Fate link: 消除后概率变相邻为同色
+  if (state.abilities.fateLink > 0) {
+    const linkChance = Math.min(0.15 + state.abilities.fateLink * 0.1, 0.5);
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const gem = grid[r][c];
+        if (!gem || gem.special === 'blackhole') continue;
+        if (Math.random() < linkChance) {
+          const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+          const validAdj = dirs.map(([dr,dc]) => ({r:r+dr,c:c+dc}))
+            .filter(p => inBounds(p.r,p.c) && grid[p.r][p.c] && grid[p.r][p.c].special !== 'blackhole' && grid[p.r][p.c].type !== gem.type);
+          if (validAdj.length > 0) {
+            const pick = validAdj[Math.floor(Math.random() * validAdj.length)];
+            grid[pick.r][pick.c].type = gem.type;
+            spawnParticles(pick.c * CELL + CELL/2, pick.r * CELL + CELL/2, GEMS[gem.type].glow, 4, 0.6);
+            break; // 每次消除最多变1个
+          }
+        }
+      }
+    }
+  }
+
   // Black hole: consume adjacent gems
   if (state.abilities.blackHole > 0) {
     let bhConsumed = 0;
@@ -2563,12 +2603,6 @@ async function processMatches() {
   while (found && state.gameRunning && !state.awaitingAbility) {
     const matchData = findMatchData();
     found = await removeAndRefill(matchData);
-  }
-  // Infinite combo: never reset
-  if (state.abilities.infiniteCombo > 0) {
-    // combo stays as-is
-    updateFrenzy(combo);
-    return;
   }
   // Combo shield: preserve portion of combo
   if (state.abilities.comboShield > 0 && combo > 1) {
@@ -2818,7 +2852,8 @@ function startTimer() {
   clearInterval(timerInterval);
   timerInterval = setInterval(async () => {
     if (state.paused || state.awaitingAbility || !state.gameRunning) return;
-    state.timeLeft -= 0.1;
+    const timerSpeed = state.abilities.deathPact > 0 ? 0.1 * (1 + state.abilities.deathPact * 0.5) : 0.1;
+    state.timeLeft -= timerSpeed;
     updateHUD();
     if (state.timeLeft <= 0) {
       state.timeLeft = 0;
@@ -3159,6 +3194,13 @@ window.showChangelog = function() {
   overlay.innerHTML = `
     <h1>\ud83d\udccb \u66f4\u65b0\u8bb0\u5f55</h1>
     <div style="text-align:left;max-width:460px;width:100%;margin:0 auto;line-height:1.8;color:#bfc6ef;font-size:15px;max-height:60vh;overflow-y:auto;">
+      <h3 style="color:#ffb05a;margin:16px 0 6px;">v2.1 <span style="font-weight:normal;font-size:13px;color:#8e95c3;">(2026-04-28)</span></h3>
+      <ul style="padding-left:20px;margin:0;">
+        <li>\u2696 \u80fd\u529b\u4f53\u7cfb\u5927\u6539\uff1a\u8c03\u7ea7 3 \u4e2a + \u524a\u5f31 3 \u4e2a + \u63cf\u8ff0\u5168\u90e8\u7cbe\u7b80</li>
+        <li>\ud83d\udd17 \u65b0\u80fd\u529b\uff1a\u547d\u8fd0\u94fe\u63a5\uff08\u53f2\u8bd7\uff09\u2014 \u6d88\u9664\u65f6\u6982\u7387\u53d8\u76f8\u90bb\u4e3a\u540c\u8272</li>
+        <li>\ud83d\udc80 \u65b0\u80fd\u529b\uff1a\u6b7b\u795e\u5951\u7ea6\uff08\u4f20\u8bf4\uff09\u2014 \u5f97\u5206\u00d72\uff0c\u5012\u8ba1\u65f6\u00d71.5</li>
+        <li>\u23f1 \u9636\u68af\u9012\u51cf\u52a0\u65f6\uff081-5\u5173+15s / 6-10\u5173+10s / 11-15\u5173+5s / 16+\u4e0d\u52a0\uff09</li>
+      </ul>
       <h3 style="color:#ffb05a;margin:16px 0 6px;">v2.0 <span style="font-weight:normal;font-size:13px;color:#8e95c3;">(2026-04-28)</span></h3>
       <ul style="padding-left:20px;margin:0;">
         <li>\ud83d\udc8e \u5b9d\u77f3\u8ff7\u9635\u7ea7\u8d28\u611f\uff087\u5c42\u6e32\u67d3\uff1a\u6295\u5f71/\u6df1\u8272\u5e95/\u7ebf\u6027\u6e10\u53d8/\u7c97\u8fb9\u7ebf/\u5207\u9762\u7ebf/\u67d4\u5149/\u5c16\u9510\u9ad8\u5149\uff09</li>
@@ -3247,7 +3289,7 @@ window.showMainMenu = function() {
       <button class="overlay-btn secondary" onclick="showLeaderboard()">🏆 排行榜</button>
       <button class="overlay-btn secondary" onclick="showChangelog()">📋 更新记录</button>
     </div>
-    <div style="margin-top:16px;font-size:12px;color:#666;">v2.0</div>
+    <div style="margin-top:16px;font-size:12px;color:#666;">v2.1</div>
     <div id="ability-select"></div>
   `;
   overlay.style.display = 'flex';
@@ -3375,7 +3417,7 @@ let gemRainTimer = null;
 function startGemRain() {
   clearInterval(gemRainTimer);
   if (state.abilities.gemRain <= 0) return;
-  const interval = Math.max(2000, 5000 - (state.abilities.gemRain - 1) * 1000);
+  const interval = Math.max(5000, 10000 - (state.abilities.gemRain - 1) * 1500);
   gemRainTimer = setInterval(async () => {
     if (!state.gameRunning || state.paused || animating || state.awaitingAbility) return;
     // Find most common type
