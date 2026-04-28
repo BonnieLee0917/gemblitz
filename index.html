@@ -1821,166 +1821,111 @@ function draw() {
       } else {
         ctx.shadowBlur = 0;
       }
-      // === Layer 1: 底部投影 ===
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.beginPath();
-      ctx.ellipse(cx + 1, cy + radius * 0.2, radius * 0.8, radius * 0.45, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // === Layer 2: 主体深色底 ===
-      ctx.fillStyle = darken(g.color, 0.45);
-      drawGemShape(ctx, gem.type, cx, cy, radius);
-      ctx.fill();
-
-      // === Layer 3: 主体渐变（亮面→暗面）===
-      const grad = ctx.createLinearGradient(cx - radius*0.5, cy - radius*0.6, cx + radius*0.5, cy + radius*0.6);
-      grad.addColorStop(0, g.glow);
-      grad.addColorStop(0.35, g.color);
-      grad.addColorStop(0.7, darken(g.color, 0.25));
-      grad.addColorStop(1, darken(g.color, 0.5));
-      ctx.fillStyle = grad;
-      drawGemShape(ctx, gem.type, cx, cy, radius * 0.92);
-      ctx.fill();
-
-      // === Layer 4: 粗实边线（宝石迷阵风格）===
-      ctx.strokeStyle = darken(g.color, 0.5);
-      ctx.lineWidth = 2.5;
-      drawGemShape(ctx, gem.type, cx, cy, radius);
-      ctx.stroke();
-      // 内边线（亮色）
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1;
-      drawGemShape(ctx, gem.type, cx, cy, radius * 0.9);
-      ctx.stroke();
-
-      // === Layer 5: 内部切面线 ===
-      ctx.save();
-      ctx.beginPath();
-      drawGemShape(ctx, gem.type, cx, cy, radius);
-      ctx.clip();
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.lineWidth = 1;
-      // 不同形状的切面线
-      if (gem.type === 0) { // 菱形：十字切面
-        ctx.beginPath();
-        ctx.moveTo(cx - radius*0.3, cy); ctx.lineTo(cx + radius*0.3, cy);
-        ctx.moveTo(cx, cy - radius*0.4); ctx.lineTo(cx, cy + radius*0.4);
-        ctx.stroke();
-      } else if (gem.type === 1) { // 六边形：内三角
-        ctx.beginPath();
-        for (let i = 0; i < 3; i++) {
-          const a1 = Math.PI / 6 + (Math.PI * 2 / 3) * i;
-          const a2 = Math.PI / 6 + (Math.PI * 2 / 3) * (i + 1);
-          ctx.moveTo(cx + Math.cos(a1)*radius*0.5, cy + Math.sin(a1)*radius*0.5);
-          ctx.lineTo(cx + Math.cos(a2)*radius*0.5, cy + Math.sin(a2)*radius*0.5);
-        }
-        ctx.stroke();
-      } else if (gem.type === 2) { // 圆：十字
-        ctx.beginPath();
-        ctx.moveTo(cx - radius*0.35, cy); ctx.lineTo(cx + radius*0.35, cy);
-        ctx.moveTo(cx, cy - radius*0.35); ctx.lineTo(cx, cy + radius*0.35);
-        ctx.stroke();
-      } else if (gem.type === 3) { // 三角：内三角
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - radius*0.3);
-        ctx.lineTo(cx + radius*0.3, cy + radius*0.2);
-        ctx.lineTo(cx - radius*0.3, cy + radius*0.2);
-        ctx.closePath();
-        ctx.stroke();
-      } else if (gem.type === 4) { // 五角星：内五边形
-        ctx.beginPath();
-        for (let i = 0; i < 5; i++) {
-          const a = -Math.PI / 2 + (Math.PI * 2 / 5) * i;
-          const px = cx + Math.cos(a) * radius * 0.4;
-          const py = cy + Math.sin(a) * radius * 0.4;
-          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.stroke();
-      } else if (gem.type === 5) { // 方形：对角线切面
-        ctx.beginPath();
-        ctx.moveTo(cx - radius*0.45, cy); ctx.lineTo(cx, cy - radius*0.45);
-        ctx.lineTo(cx + radius*0.45, cy);
-        ctx.moveTo(cx - radius*0.45, cy); ctx.lineTo(cx, cy + radius*0.45);
-        ctx.lineTo(cx + radius*0.45, cy);
-        ctx.stroke();
-      } else if (gem.type === 6) { // 水滴：弧线
-        ctx.beginPath();
-        ctx.arc(cx, cy + radius*0.1, radius*0.35, 0, Math.PI, true);
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // === Layer 6: 上半弧柔光 ===
-      ctx.save();
-      ctx.beginPath();
-      drawGemShape(ctx, gem.type, cx, cy, radius);
-      ctx.clip();
-      const shineGrad = ctx.createLinearGradient(cx, cy - radius, cx, cy);
-      shineGrad.addColorStop(0, 'rgba(255,255,255,0.2)');
-      shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = shineGrad;
-      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius);
-      ctx.restore();
-
-      // === Layer 7: 尖锐高光点 ===
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.beginPath();
-      ctx.arc(cx - radius*0.22, cy - radius*0.28, radius * 0.1, 0, Math.PI * 2);
-      ctx.fill();
-      // 次高光
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.beginPath();
-      ctx.arc(cx - radius*0.1, cy - radius*0.18, radius * 0.06, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 切面线（钻石 type 5 额外）保留
-      if (gem.type === 5) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(cx - radius * 0.5, cy);
-        ctx.lineTo(cx, cy - radius * 0.5);
-        ctx.lineTo(cx + radius * 0.5, cy);
-        ctx.stroke();
-      }
-      ctx.shadowBlur = 0;
-
       if (gem.special === 'bomb') {
-        const bx = cx + radius * 0.28, by = cy + radius * 0.22;
-        const br = radius * 0.28;
-        // 炸弹球体
-        const bombGrad = ctx.createRadialGradient(bx - br*0.2, by - br*0.2, br*0.1, bx, by, br);
-        bombGrad.addColorStop(0, '#555');
-        bombGrad.addColorStop(1, '#1a1a1a');
+        // 整颗宝石变成彩色炸弹（保留原宝石颜色，不再叠图标）
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(cx + 1, cy + radius * 0.22, radius * 0.82, radius * 0.46, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const bombR = radius * 0.86;
+        const bombGrad = ctx.createRadialGradient(cx - bombR * 0.25, cy - bombR * 0.25, bombR * 0.08, cx, cy, bombR);
+        bombGrad.addColorStop(0, g.glow);
+        bombGrad.addColorStop(0.55, g.color);
+        bombGrad.addColorStop(1, darken(g.color, 0.55));
         ctx.fillStyle = bombGrad;
         ctx.beginPath();
-        ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.arc(cx, cy, bombR, 0, Math.PI * 2);
         ctx.fill();
-        // 炸弹高光
+
+        ctx.strokeStyle = darken(g.color, 0.65);
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, bombR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 引线底座
+        ctx.fillStyle = darken(g.color, 0.75);
+        ctx.beginPath();
+        ctx.arc(cx + bombR * 0.28, cy - bombR * 0.72, bombR * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 引线
+        ctx.strokeStyle = '#ffd76a';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(cx + bombR * 0.28, cy - bombR * 0.74);
+        ctx.quadraticCurveTo(cx + bombR * 0.58, cy - bombR * 1.22, cx + bombR * 0.78, cy - bombR * 0.98);
+        ctx.stroke();
+
+        // 火星
+        const sparkT = Date.now() / 180;
+        const sparkA = 0.55 + Math.sin(sparkT) * 0.45;
+        ctx.fillStyle = `rgba(255,210,80,${sparkA})`;
+        ctx.beginPath();
+        ctx.arc(cx + bombR * 0.78, cy - bombR * 0.98, bombR * 0.13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(255,110,40,${sparkA * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(cx + bombR * 0.7, cy - bombR * 1.08, bombR * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 球体高光
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.beginPath();
+        ctx.arc(cx - bombR * 0.28, cy - bombR * 0.28, bombR * 0.16, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // === Layer 1: 底部投影 ===
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(cx + 1, cy + radius * 0.2, radius * 0.8, radius * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // === Layer 2: 主体深色底 ===
+        ctx.fillStyle = darken(g.color, 0.45);
+        drawGemShape(ctx, gem.type, cx, cy, radius);
+        ctx.fill();
+
+        // === Layer 3: 主体渐变（亮面→暗面）===
+        const grad = ctx.createLinearGradient(cx - radius*0.5, cy - radius*0.6, cx + radius*0.5, cy + radius*0.6);
+        grad.addColorStop(0, g.glow);
+        grad.addColorStop(0.35, g.color);
+        grad.addColorStop(0.7, darken(g.color, 0.25));
+        grad.addColorStop(1, darken(g.color, 0.5));
+        ctx.fillStyle = grad;
+        drawGemShape(ctx, gem.type, cx, cy, radius * 0.92);
+        ctx.fill();
+
+        // === Layer 4: 粗实边线 ===
+        ctx.strokeStyle = darken(g.color, 0.5);
+        ctx.lineWidth = 2.5;
+        drawGemShape(ctx, gem.type, cx, cy, radius);
+        ctx.stroke();
+
+        // === Layer 5: 上半弧柔光 ===
+        ctx.save();
+        ctx.beginPath();
+        drawGemShape(ctx, gem.type, cx, cy, radius);
+        ctx.clip();
+        const shineGrad = ctx.createLinearGradient(cx, cy - radius, cx, cy);
+        shineGrad.addColorStop(0, 'rgba(255,255,255,0.18)');
+        shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = shineGrad;
+        ctx.fillRect(cx - radius, cy - radius, radius * 2, radius);
+        ctx.restore();
+
+        // === Layer 6: 尖锐高光点 ===
+        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.beginPath();
+        ctx.arc(cx - radius*0.22, cy - radius*0.28, radius * 0.1, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,0.25)';
         ctx.beginPath();
-        ctx.arc(bx - br*0.25, by - br*0.25, br*0.25, 0, Math.PI * 2);
-        ctx.fill();
-        // 引线
-        ctx.strokeStyle = '#8B6914';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(bx, by - br);
-        ctx.quadraticCurveTo(bx + br*0.5, by - br*1.4, bx + br*0.8, by - br*1.2);
-        ctx.stroke();
-        // 火花
-        const sparkT = Date.now() / 200;
-        const sparkAlpha = 0.6 + Math.sin(sparkT) * 0.4;
-        ctx.fillStyle = `rgba(255,180,50,${sparkAlpha})`;
-        ctx.beginPath();
-        ctx.arc(bx + br*0.8, by - br*1.2, br*0.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = `rgba(255,100,30,${sparkAlpha * 0.7})`;
-        ctx.beginPath();
-        ctx.arc(bx + br*0.7, by - br*1.35, br*0.12, 0, Math.PI * 2);
+        ctx.arc(cx - radius*0.1, cy - radius*0.18, radius * 0.05, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.shadowBlur = 0;
 
       if (selected && selected.r === r && selected.c === c) {
         // 呼吸光环
