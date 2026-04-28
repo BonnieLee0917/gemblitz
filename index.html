@@ -1297,8 +1297,9 @@ const ABILITY_DEFS = {
   },
   bombGem: {
     key: 'bombGem', icon: '💣', name: '炸弹宝石', tag: '特殊',
-    description: '随机生成炸弹宝石',
-    onGain() { state.abilities.bombGem++; }
+    description: '四消产生炸弹宝石',
+    oneTime: true,
+    onGain() { state.abilities.bombGem = 1; }
   },
   lightning: {
     key: 'lightning', icon: '⚡', name: '闪电链', tag: '史诗',
@@ -1636,9 +1637,8 @@ function createGem(r, c, opts = {}) {
   return gem;
 }
 function maybeSpecialForNewGem() {
-  const bombLevel = state.abilities.bombGem;
-  const chance = bombLevel > 0 ? Math.min(0.03 + bombLevel * 0.025, 0.22) : 0;
-  return Math.random() < chance ? 'bomb' : null;
+  // Bombs now only come from 4-match (Bejeweled style), not random drops
+  return null;
 }
 function initGrid() {
   grid = [];
@@ -2376,6 +2376,26 @@ async function removeAndRefill(matchData) {
     const [r, c] = parseCellKey(key);
     if (grid[r][c] && grid[r][c].special === 'blackhole') continue; // black holes persist
     grid[r][c] = null;
+  }
+
+  // Bejeweled-style: 4+ match → spawn bomb at center of group
+  if (state.abilities.bombGem > 0) {
+    for (const group of matchData.groups) {
+      if (group.len >= 4) {
+        // Pick center cell of the group
+        const mid = Math.floor(group.cells.length / 2);
+        const cell = group.cells[mid];
+        // Only place if cell is empty (was just cleared)
+        if (!grid[cell.r][cell.c]) {
+          grid[cell.r][cell.c] = createGem(cell.r, cell.c, {
+            type: group.type,
+            special: 'bomb',
+          });
+          spawnParticles(cell.c * CELL + CELL/2, cell.r * CELL + CELL/2, '#ffd76a', 12, 1.8);
+          floatText('💣 四消!', cell.c * CELL + CELL/2, cell.r * CELL + CELL/2 - 20, '#ffd76a', 'bonus');
+        }
+      }
+    }
   }
 
   for (let c = 0; c < COLS; c++) {
