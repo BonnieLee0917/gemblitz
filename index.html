@@ -979,7 +979,7 @@ function playLevelClear() {
 function playBomb() {
   ensureAudio();
   loadSFX();
-  if (playSFX('bomb', 0.6)) return;
+  if (playSFX('bomb', 0.35)) return;
   const t = audioCtx.currentTime;
   // Punchy noise burst
   const bufSize = Math.floor(audioCtx.sampleRate * 0.25);
