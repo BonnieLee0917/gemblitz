@@ -789,6 +789,10 @@ function ensureAudio() {
 const SFX = {};
 const SFX_FILES = {
   match: 'sfx/match.ogg',
+  match2: 'sfx/match2.ogg',
+  match3: 'sfx/match3.ogg',
+  match4: 'sfx/match4.ogg',
+  match5: 'sfx/match5.ogg',
   bigmatch: 'sfx/bigmatch.ogg',
   levelclear: 'sfx/levelclear.ogg',
   gameover: 'sfx/gameover.ogg',
@@ -826,8 +830,13 @@ function playSFX(name, volume = 0.5, playbackRate = 1) {
 function playMatch(combo) {
   ensureAudio();
   loadSFX();
-  const rate = 1 + Math.min(combo, 8) * 0.08;
-  if (playSFX('match', 0.4, rate)) return;
+  // combo越高用越重的玈璃碰撞音 + 随机变体
+  const rate = 1 + Math.min(combo, 8) * 0.06;
+  let sfxName;
+  if (combo >= 5) sfxName = ['match4','match5'][Math.floor(Math.random()*2)];
+  else if (combo >= 3) sfxName = ['match2','match3'][Math.floor(Math.random()*2)];
+  else sfxName = ['match','match2','match3'][Math.floor(Math.random()*3)];
+  if (playSFX(sfxName, 0.5, rate)) return;
   const t = audioCtx.currentTime;
   const scale = [523, 587, 659, 698, 784, 880, 988, 1047];
   const freq = scale[Math.min(combo, scale.length - 1)];
