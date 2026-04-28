@@ -108,7 +108,7 @@ body {
 #midbar {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto auto;
   align-items: center;
   gap: 10px;
 }
@@ -410,7 +410,7 @@ canvas {
   .hud-card .value-strong { font-size: 16px; }
   .hud-card .value-sub { font-size: 10px; margin-top: 2px; }
   .progress-shell { height: 5px; margin-top: 4px; }
-  #midbar { grid-template-columns: 1fr auto auto auto; gap: 6px; }
+  #midbar { grid-template-columns: 1fr auto auto auto auto; gap: 6px; }
   #combo-display { min-height: 32px; font-size: 13px; padding: 0 8px; }
   .icon-btn { height: 36px; min-width: 36px; font-size: 14px; padding: 0 8px; }
   .ability-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -723,6 +723,7 @@ html, body { overflow-x: hidden; max-width: 100vw; }
   <div id="midbar">
     <div id="combo-display"></div>
     <button id="shuffle-btn" class="icon-btn" title="免费洗牌">🔄 <span id="shuffle-count">0</span></button>
+    <button id="blockblast-btn" class="icon-btn" title="方块爆破 2×2" style="display:none">⬛</button>
     <button id="hint-btn" class="icon-btn" title="提示">💡</button>
     <button id="pause-btn" class="icon-btn" title="暂停">⏸</button>
   </div>
@@ -1391,6 +1392,12 @@ const ABILITY_DEFS = {
     tier: 'legendary', minLevel: 8,
     onGain() { state.abilities.deathPact++; }
   },
+  blockBlast: {
+    key: 'blockBlast', icon: '⬛', name: '方块爆破', tag: '策略',
+    description: '消除2×2区域（一次性）',
+    oneTime: true,
+    onGain() { state.abilities.blockBlast = 1; state.blockBlastUsed = false; }
+  },
 };
 
 
@@ -1518,6 +1525,7 @@ const comboDisplay = document.getElementById('combo-display');
 const pauseBtn = document.getElementById('pause-btn');
 const shuffleBtn = document.getElementById('shuffle-btn');
 const shuffleCount = document.getElementById('shuffle-count');
+const blockBlastBtn = document.getElementById('blockblast-btn');
 const container = document.getElementById('game-container');
 const abilitiesList = document.getElementById('abilities-list');
 const bestDisplay = document.getElementById('best-display');
@@ -1527,6 +1535,8 @@ const levelBanner = document.getElementById('level-banner');
 let CELL, PADDING;
 let grid = [], animating = false, selected = null, particles = [];
 let dragStart = null;
+let blockBlastMode = false;
+let blockBlastHover = null;
 let timerInterval = null;
 let lastTickSecond = -1;
 let currentOverlayMode = 'menu';
@@ -1548,6 +1558,7 @@ const state = {
   levelStartTotalScore: 0,
   abilities: createAbilityState(),
   colorMastery: Array(GEMS.length).fill(0),
+  blockBlastUsed: false,
 };
 
 function createAbilityState() {
@@ -1574,6 +1585,7 @@ function createAbilityState() {
     doubleDown: 0,
     fateLink: 0,
     deathPact: 0,
+    blockBlast: 0,
   };
 }
 
@@ -1665,6 +1677,17 @@ function updateHUD() {
   retryDisplay.textContent = `复活 ${state.secondChanceCharges} · 洗牌 ${state.shufflesLeft}`;
   if (shuffleCount) shuffleCount.textContent = state.shufflesLeft;
   if (shuffleBtn) shuffleBtn.disabled = !state.gameRunning || state.paused || animating || state.awaitingAbility || state.shufflesLeft <= 0;
+  // Block Blast button visibility
+  if (blockBlastBtn) {
+    if (state.abilities.blockBlast > 0 && !state.blockBlastUsed) {
+      blockBlastBtn.style.display = '';
+      blockBlastBtn.disabled = !state.gameRunning || state.paused || animating || state.awaitingAbility;
+      blockBlastBtn.style.outline = blockBlastMode ? '2px solid #ffd76a' : '';
+      blockBlastBtn.style.outlineOffset = blockBlastMode ? '2px' : '';
+    } else {
+      blockBlastBtn.style.display = 'none';
+    }
+  }
   const progress = Math.min(state.levelScore / state.levelTarget, 1);
   targetProgress.style.width = `${progress * 100}%`;
   targetProgress.style.background = progress >= 1
@@ -1711,6 +1734,8 @@ function renderAbilities() {
       extra = `持有 ${state.secondChanceCharges} 次`;
     } else if (def.key === 'freeShuffle') {
       extra = `每关 +${state.abilities.freeShuffle} 次`;
+    } else if (def.key === 'blockBlast') {
+      extra = state.blockBlastUsed ? '已使用' : '剩余 1 次';
     }
     return `
       <div class="ability-badge" title="${def.description}">
@@ -1999,6 +2024,18 @@ function draw() {
         ctx.restore();
       }
     }
+  }
+  // Block Blast 2x2 hover preview
+  if (blockBlastMode && blockBlastHover) {
+    const { r: hr, c: hc } = blockBlastHover;
+    const pulse = 0.5 + Math.sin(Date.now() / 250) * 0.3;
+    ctx.fillStyle = `rgba(255, 80, 80, ${0.15 + pulse * 0.1})`;
+    ctx.fillRect(hc * CELL, hr * CELL, CELL * 2, CELL * 2);
+    ctx.strokeStyle = `rgba(255, 80, 80, ${0.6 + pulse * 0.3})`;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(hc * CELL + 1.5, hr * CELL + 1.5, CELL * 2 - 3, CELL * 2 - 3);
+    ctx.setLineDash([]);
   }
   drawParticles();
   drawHintOverlay();
@@ -2643,9 +2680,105 @@ function getCellFromPos(px, py) {
   if (r >= 0 && r < ROWS && c >= 0 && c < COLS) return { r, c };
   return null;
 }
+function getBlockBlastAnchor(r, c) {
+  return {
+    r: Math.max(0, Math.min(r, ROWS - 2)),
+    c: Math.max(0, Math.min(c, COLS - 2)),
+  };
+}
+function setBlockBlastMode(active) {
+  const canUse = state.abilities.blockBlast > 0 && !state.blockBlastUsed;
+  blockBlastMode = active && canUse;
+  if (!blockBlastMode) blockBlastHover = null;
+  selected = null;
+  updateHUD();
+  draw();
+}
+async function useBlockBlast(r, c) {
+  if (!state.gameRunning || animating || state.paused || state.awaitingAbility) return;
+  if (state.abilities.blockBlast <= 0 || state.blockBlastUsed) return;
+  resetHintTimer();
+  animating = true;
+  const anchor = getBlockBlastAnchor(r, c);
+  blockBlastMode = false;
+  blockBlastHover = null;
+  selected = null;
+
+  let cleared = 0;
+  for (let rr = anchor.r; rr < anchor.r + 2; rr++) {
+    for (let cc = anchor.c; cc < anchor.c + 2; cc++) {
+      const gem = grid[rr]?.[cc];
+      if (!gem) continue;
+      const pts = getCellPoints(gem);
+      state.levelScore += Math.round(pts);
+      state.totalScore += Math.round(pts);
+      spawnParticles(cc * CELL + CELL / 2, rr * CELL + CELL / 2, GEMS[gem.type].glow, 8, 1.4);
+      grid[rr][cc] = null;
+      cleared++;
+    }
+  }
+
+  state.abilities.blockBlast = 0;
+  state.blockBlastUsed = true;
+
+  for (let cc = 0; cc < COLS; cc++) {
+    let wr = ROWS - 1;
+    for (let rr = ROWS - 1; rr >= 0; rr--) {
+      if (grid[rr][cc]) {
+        if (wr !== rr) {
+          grid[wr][cc] = grid[rr][cc];
+          grid[rr][cc] = null;
+        }
+        grid[wr][cc].targetY = wr * CELL;
+        wr--;
+      }
+    }
+    for (let rr = wr; rr >= 0; rr--) {
+      grid[rr][cc] = createGem(rr, cc, { y: -CELL, special: maybeSpecialForNewGem() });
+    }
+  }
+  for (let rr = 0; rr < ROWS; rr++) {
+    for (let cc = 0; cc < COLS; cc++) {
+      if (grid[rr][cc]) {
+        grid[rr][cc].x = cc * CELL;
+        grid[rr][cc].y = rr * CELL;
+        grid[rr][cc].scale = 1;
+        grid[rr][cc].alpha = 1;
+      }
+    }
+  }
+
+  if (cleared > 0) {
+    triggerScoreRoll();
+    playBomb();
+    screenShake();
+    floatText('⬛ 2×2 爆破!', (anchor.c + 1) * CELL, (anchor.r + 1) * CELL, '#ff7a7a', 'combo-text');
+    abilityTriggers++;
+  }
+
+  animating = false;
+  updateHUD();
+  draw();
+
+  const matchData = findMatchData();
+  if (matchData.matched.size > 0) {
+    combo = 0;
+    animating = true;
+    await removeAndRefill(matchData);
+    await processMatches();
+    animating = false;
+  }
+  await checkLevelOutcome();
+  updateHUD();
+  draw();
+}
 function handleSelect(r, c) {
   resetHintTimer();
   if (!state.gameRunning || animating || state.paused || state.awaitingAbility) return;
+  if (blockBlastMode) {
+    useBlockBlast(r, c);
+    return;
+  }
   if (selected) {
     const dr = Math.abs(r - selected.r);
     const dc = Math.abs(c - selected.c);
@@ -2666,9 +2799,19 @@ let dragStartPx = null;
 canvas.addEventListener('mousedown', e => {
   if (state.paused || state.awaitingAbility) return;
   const cell = getCellFromPos(e.clientX, e.clientY);
-  if (cell) { dragStart = cell; dragStartPx = {x: e.clientX, y: e.clientY}; }
+  if (cell) {
+    if (blockBlastMode) blockBlastHover = getBlockBlastAnchor(cell.r, cell.c);
+    dragStart = cell;
+    dragStartPx = {x: e.clientX, y: e.clientY};
+  }
 });
 canvas.addEventListener('mousemove', e => {
+  const hoverCell = getCellFromPos(e.clientX, e.clientY);
+  if (blockBlastMode) {
+    blockBlastHover = hoverCell ? getBlockBlastAnchor(hoverCell.r, hoverCell.c) : null;
+    draw();
+  }
+  if (blockBlastMode) return;
   if (!dragStart || !dragStartPx || state.paused || state.awaitingAbility || animating || !state.gameRunning) return;
   const dx = e.clientX - dragStartPx.x;
   const dy = e.clientY - dragStartPx.y;
@@ -2697,12 +2840,22 @@ canvas.addEventListener('touchstart', e => {
   if (state.paused || state.awaitingAbility) return;
   const t = e.touches[0];
   const cell = getCellFromPos(t.clientX, t.clientY);
-  if (cell) { dragStart = cell; dragStartPx = {x: t.clientX, y: t.clientY}; }
+  if (cell) {
+    if (blockBlastMode) blockBlastHover = getBlockBlastAnchor(cell.r, cell.c);
+    dragStart = cell;
+    dragStartPx = {x: t.clientX, y: t.clientY};
+  }
 }, { passive: false });
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
-  if (!dragStart || !dragStartPx || state.paused || state.awaitingAbility || animating || !state.gameRunning) return;
   const t = e.touches[0];
+  const hoverCell = getCellFromPos(t.clientX, t.clientY);
+  if (blockBlastMode) {
+    blockBlastHover = hoverCell ? getBlockBlastAnchor(hoverCell.r, hoverCell.c) : null;
+    draw();
+    return;
+  }
+  if (!dragStart || !dragStartPx || state.paused || state.awaitingAbility || animating || !state.gameRunning) return;
   const dx = t.clientX - dragStartPx.x;
   const dy = t.clientY - dragStartPx.y;
   const threshold = CELL * 0.3;
@@ -2875,6 +3028,8 @@ function getRandomAbilityChoices(count = 3) {
     if (state.abilities[def.key] > 0) weight = Math.max(1, weight - 1);
     // infiniteCombo can't stack
     if (def.key === 'infiniteCombo' && state.abilities.infiniteCombo > 0) continue;
+    // oneTime abilities: skip if already picked this run
+    if (def.oneTime && state.abilities[def.key] > 0) continue;
     for (let i = 0; i < weight; i++) weighted.push(def);
   }
   const choices = [];
@@ -3008,6 +3163,9 @@ function setupRun() {
   state.secondChanceCharges = 0;
   state.abilities = createAbilityState();
   state.colorMastery = Array(GEMS.length).fill(0);
+  state.blockBlastUsed = false;
+  blockBlastMode = false;
+  blockBlastHover = null;
   combo = 0;
   particles = [];
   selected = null;
@@ -3064,6 +3222,8 @@ function startLevel(level, isRetry = false) {
   lastTickSecond = -1;
   combo = 0;
   selected = null;
+  blockBlastMode = false;
+  blockBlastHover = null;
   overlay.style.display = 'none';
   pauseBtn.disabled = false;
   pauseBtn.textContent = '⏸';
@@ -3115,6 +3275,8 @@ function endRun(clearedAll) {
   state.gameRunning = false;
   state.paused = false;
   state.awaitingAbility = false;
+  blockBlastMode = false;
+  blockBlastHover = null;
   clearInterval(timerInterval);
   clearInterval(gemRainTimer);
   playGameOver();
@@ -3280,7 +3442,12 @@ window.togglePause = togglePause;
 
 pauseBtn.addEventListener('click', togglePause);
 if (shuffleBtn) shuffleBtn.addEventListener('click', () => randomizeBoard(true));
+if (blockBlastBtn) blockBlastBtn.addEventListener('click', () => setBlockBlastMode(!blockBlastMode));
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && blockBlastMode) {
+    setBlockBlastMode(false);
+    return;
+  }
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
     if (state.gameRunning) togglePause();
   }
