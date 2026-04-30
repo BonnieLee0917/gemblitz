@@ -182,7 +182,7 @@
     <div style="display:flex;gap:6px;align-items:center;">
       <span class="mic-dot" id="micIndicator" title="麦克风未开启"></span>
       <button id="toggleVoice" class="badge" style="border:none;cursor:pointer;" title="切换音域"><span id="voicePill">👤 选音域</span></button>
-      <span class="badge">v0.1.2</span>
+      <span class="badge">v0.1.3</span>
     </div>
   </header>
 
@@ -237,7 +237,22 @@
 <script type="module">
   import { PitchDetector } from 'https://esm.sh/pitchy@4.1.0';
 
-  // ---------- 首调唱名 + 男/女音域固定基准 ----------
+  // ---------- URL flags ----------
+  const URL_FLAGS = new URLSearchParams(location.search);
+  const SHOW_PERF = URL_FLAGS.has('perf');
+  const SHOW_RAW  = URL_FLAGS.has('raw');
+  let frameCount = 0, fpsLastT = performance.now(), fpsValue = 0;
+
+  // ---------- 调参口（供 Vivian 实测后调参）----------
+  window.__tune = {
+    centsThrottleMs: 0,
+    trailSmoothing: 0,
+    spiritEaseMs: 0,
+    glowResponseMs: 100,
+    silenceFreezeFrames: 0,
+    iosLatencyOffsetMs: 0,
+  };
+
   // 大调音程比例：do=1, re=9/8, mi=5/4, fa=4/3, sol=3/2, la=5/3, si=15/8, do↑=2
   const SOLFEGE = [
     { name: 'do',  ratio: 1.0 },
@@ -573,6 +588,14 @@
   // ---------- 主循环 ----------
   let lastDetectTime = 0;
   function loop() {
+    // FPS 计算（供 ?perf=1）
+    frameCount++;
+    const fpsNow = performance.now();
+    if (fpsNow - fpsLastT >= 1000) {
+      fpsValue = Math.round(frameCount * 1000 / (fpsNow - fpsLastT));
+      frameCount = 0;
+      fpsLastT = fpsNow;
+    }
     if (isRecording && analyser && detector) {
       analyser.getFloatTimeDomainData(buffer);
       const [pitch, clarity] = detector.findPitch(buffer, sampleRate);
@@ -649,6 +672,18 @@
       }
     }
     render();
+    if (SHOW_PERF) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(8, 8, 150, 56);
+      ctx.fillStyle = '#fff';
+      ctx.font = '11px ui-monospace,Menlo,monospace';
+      ctx.fillText(`fps: ${fpsValue}`, 14, 22);
+      ctx.fillText(`detect: ${(scoreFpsEl.textContent||'—')} Hz`, 14, 36);
+      ctx.fillText(`raw cents: ${lastCents != null ? Math.round(lastCents) : '—'}`, 14, 50);
+      ctx.fillText(`clarity: ${lastClarity ? lastClarity.toFixed(2) : '—'}`, 14, 62);
+      ctx.restore();
+    }
     requestAnimationFrame(loop);
   }
   loop();
