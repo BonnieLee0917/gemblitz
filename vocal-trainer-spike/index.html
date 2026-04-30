@@ -267,7 +267,7 @@
     male:   { label: '👨 男声', baseHz: 130.81, baseLabel: 'C3' },   // do = C3
     female: { label: '👩 女声', baseHz: 261.63, baseLabel: 'C4' },   // do = C4
   };
-  let voiceMode = localStorage.getItem('vt_voice') || null;
+  let voiceMode = sessionStorage.getItem('vt_voice') || null;
   function getNoteHz(solfegeName) {
     const base = VOICE_PROFILES[voiceMode || 'female'].baseHz;
     return base * Math.pow(2, SEMITONES_FROM_DO[solfegeName] / 12);
@@ -688,7 +688,7 @@
   // ---------- Welcome + 音域选择 ----------
   function pickVoice(mode) {
     voiceMode = mode;
-    localStorage.setItem('vt_voice', mode);
+    sessionStorage.setItem('vt_voice', mode);
     refreshNotes();
     document.getElementById('welcome').classList.add('hidden');
   }
@@ -696,7 +696,7 @@
   document.getElementById('pickFemale').onclick = () => pickVoice('female');
   document.getElementById('toggleVoice').onclick = () => {
     voiceMode = voiceMode === 'male' ? 'female' : 'male';
-    localStorage.setItem('vt_voice', voiceMode);
+    sessionStorage.setItem('vt_voice', voiceMode);
     refreshNotes();
     updateVoicePill();
     showFeedback(`已切换到 ${VOICE_PROFILES[voiceMode].label}（do = ${VOICE_PROFILES[voiceMode].baseLabel}）`, 1500);
