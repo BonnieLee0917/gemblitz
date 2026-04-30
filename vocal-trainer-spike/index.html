@@ -15,7 +15,9 @@
     --gold-soft: #fde8a3;
     --green: #6ec6a8;
     --orange: #f4a261;
-    --red: #e76f51;
+    --red: #FFB3BA;
+  --red-deep: #f48a93;
+  --silence: #c8c4d1;
     --shadow: 0 8px 32px rgba(42, 36, 56, 0.08);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -85,7 +87,12 @@
   .pill.cents.perfect { color: var(--green); background: rgba(110, 198, 168, 0.15); }
   .pill.cents.good    { color: #4a9d7c; }
   .pill.cents.ok      { color: var(--orange); }
-  .pill.cents.miss    { color: var(--red); }
+  .pill.cents.silence { color: var(--ink-soft); background: rgba(200, 196, 209, 0.2); }
+  .mic-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #c8c4d1; margin-right: 4px; vertical-align: middle;
+    transition: background 0.3s;
+  }
   .feedback-text {
     position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
     font-size: 16px; font-weight: 600; color: var(--ink);
@@ -173,8 +180,9 @@
   <header>
     <h1>🎵 视唱小课堂</h1>
     <div style="display:flex;gap:6px;align-items:center;">
+      <span class="mic-dot" id="micIndicator" title="麦克风未开启"></span>
       <button id="toggleVoice" class="badge" style="border:none;cursor:pointer;" title="切换音域"><span id="voicePill">👤 选音域</span></button>
-      <span class="badge">v0.1.1</span>
+      <span class="badge">v0.1.2</span>
     </div>
   </header>
 
@@ -345,8 +353,10 @@
       detector.minVolumeDecibels = -40;
       isRecording = true;
       detectCount = 0; detectStartT = performance.now();
+      lastVoiceTime = performance.now();
       micBtn.textContent = '⏸ 停止';
       micBtn.classList.add('recording');
+      updateMicIndicator('on');
       showFeedback('开始唱～跟着 ' + NOTES[targetIdx].name, 1500);
     } catch (e) {
       alert('麦克风启动失败：' + e.message);
@@ -359,6 +369,7 @@
     micStream = null; sourceNode = null; analyser = null;
     micBtn.textContent = '🎤 开始唱';
     micBtn.classList.remove('recording');
+    updateMicIndicator('off');
   }
 
   const micBtn = document.getElementById('micBtn');
@@ -390,6 +401,15 @@
   let lastHz = null, lastClarity = 0, lastCents = null, lastGrade = null;
   let streak = 0, bestStreak = 0, bestScore = 0, currentScore = 0;
   let trail = []; // [{x, y, grade, alpha}]
+  let lastVoiceTime = 0;  // 最后一次检测到有效人声的时间
+
+  function updateMicIndicator(state) {
+    const el = document.getElementById('micIndicator');
+    if (!el) return;
+    if (state === 'on')        { el.style.background = '#6ec6a8'; el.title = '麦克风开启中'; }
+    else if (state === 'listening') { el.style.background = '#f5c542'; el.title = '在听，但没收到人声'; }
+    else                       { el.style.background = '#c8c4d1'; el.title = '麦克风未开启'; }
+  }
 
   const pillNoteEl = document.getElementById('pillNote');
   const pillCentsEl = document.getElementById('pillCents');
@@ -575,13 +595,14 @@
         const y = hzToY(pitch, canvas.clientHeight);
         trail.push({ x, y, grade: lastGrade, alpha: 1 });
 
-        // streak / score
+        // streak 处理：只有真 miss 才清零；ok 不中断；silence 不在这里走
         if (lastGrade === 'perfect' || lastGrade === 'good') {
           streak++;
           bestStreak = Math.max(bestStreak, streak);
           const pts = lastGrade === 'perfect' ? 3 : 1;
           currentScore += pts;
           if (currentScore > bestScore) bestScore = currentScore;
+          lastVoiceTime = now;
 
           // 持续 1 秒（约 21 帧）满分触发提示
           if (streak === 21 && lastGrade === 'perfect') {
@@ -589,23 +610,21 @@
           } else if (streak === 10) {
             showFeedback('稳住～就是这个感觉', 1000);
           }
-        } else {
-          if (streak > 5 && lastGrade === 'ok') {
-            // 不打断
-          } else {
-            streak = 0;
+        } else if (lastGrade === 'ok') {
+          // ok 不加分但不打断 streak
+          lastVoiceTime = now;
+        } else if (lastGrade === 'miss') {
+          // 只有真的 miss 才清 streak
+          streak = 0;
+          if (now - lastDetectTime > 1500) {
+            const dir = normCents < 0 ? '高一点点' : '低一点点';
+            showFeedback(`再 ${dir}～你离 ${target.name} 还差 ${Math.round(Math.abs(normCents))} 音分`, 1200);
+            lastDetectTime = now;
           }
-          if (lastGrade === 'miss') {
-            // 提示方向
-            if (now - lastDetectTime > 1500) {
-              const dir = normCents < 0 ? '高一点点' : '低一点点';
-              showFeedback(`再 ${dir}～你离 ${target.name} 还差 ${Math.round(Math.abs(normCents))} 音分`, 1200);
-              lastDetectTime = now;
-            }
-          }
+          lastVoiceTime = now;
         }
 
-        pillNoteEl.textContent = `你: ${hzToNoteName(pitch)} (${pitch.toFixed(1)}Hz)`;
+    pillNoteEl.textContent = `🎤 ${hzToNoteName(pitch)} (${pitch.toFixed(1)}Hz)`;
         pillCentsEl.textContent = `${normCents > 0 ? '+' : ''}${normCents.toFixed(0)} cents`;
         pillCentsEl.className = 'pill cents ' + lastGrade;
 
@@ -616,10 +635,17 @@
         }
         updateScore();
       } else {
+        // 「无声音 / 不清晰」分支：不走评分、不清 streak、不染警警色
         lastHz = null;
-        pillNoteEl.textContent = '听不清...';
-        pillCentsEl.textContent = '-- cents';
-        pillCentsEl.className = 'pill cents';
+        // streak 保留（8 秒内不动）【Rose 红线】
+        if (now - lastVoiceTime > 8000) {
+          streak = 0;
+          updateScore();
+        }
+        pillNoteEl.textContent = '🎤 听不清…开始唱吧';
+        pillCentsEl.textContent = '— —';
+        pillCentsEl.className = 'pill cents silence';
+        updateMicIndicator('listening');
       }
     }
     render();
