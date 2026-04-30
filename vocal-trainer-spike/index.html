@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>视唱小课堂 · v0.1 demo</title>
+<style>
+  :root {
+    --bg-1: #f7f3ee;
+    --bg-2: #fef8f0;
+    --ink: #2a2438;
+    --ink-soft: #6b647e;
+    --gold: #f5c542;
+    --gold-soft: #fde8a3;
+    --green: #6ec6a8;
+    --orange: #f4a261;
+    --red: #e76f51;
+    --shadow: 0 8px 32px rgba(42, 36, 56, 0.08);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    color: var(--ink);
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+  }
+  #app {
+    display: flex; flex-direction: column;
+    height: 100vh; max-width: 720px; margin: 0 auto;
+    padding: 16px; gap: 12px;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 8px;
+  }
+  header h1 {
+    margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;
+  }
+  .badge {
+    font-size: 11px; padding: 3px 8px; border-radius: 12px;
+    background: rgba(245, 197, 66, 0.2); color: #b8860b;
+    font-weight: 600;
+  }
+  .target-card {
+    background: white; border-radius: 20px; padding: 18px 20px;
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+  }
+  .target-info { flex: 1; }
+  .target-label { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+  .target-note { font-size: 32px; font-weight: 800; line-height: 1; }
+  .target-hz { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+  .play-btn {
+    width: 56px; height: 56px; border-radius: 50%; border: none;
+    background: linear-gradient(135deg, var(--gold) 0%, #e6a82e 100%);
+    color: white; font-size: 22px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(245, 197, 66, 0.4);
+    transition: transform 0.15s;
+  }
+  .play-btn:active { transform: scale(0.92); }
+  #stage {
+    flex: 1; position: relative;
+    background: white; border-radius: 24px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  #stage canvas { width: 100%; height: 100%; display: block; }
+  .stage-overlay {
+    position: absolute; top: 12px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between;
+    pointer-events: none;
+  }
+  .pill {
+    background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px);
+    padding: 6px 12px; border-radius: 12px;
+    font-size: 12px; font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+  .pill.cents { color: var(--ink-soft); }
+  .pill.cents.perfect { color: var(--green); background: rgba(110, 198, 168, 0.15); }
+  .pill.cents.good    { color: #4a9d7c; }
+  .pill.cents.ok      { color: var(--orange); }
+  .pill.cents.miss    { color: var(--red); }
+  .feedback-text {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    font-size: 16px; font-weight: 600; color: var(--ink);
+    pointer-events: none;
+    transition: opacity 0.3s;
+    text-align: center;
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(6px);
+    padding: 8px 18px; border-radius: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .controls {
+    display: flex; gap: 10px;
+  }
+  .ctrl-btn {
+    flex: 1; padding: 14px; border-radius: 16px; border: none;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .ctrl-btn.primary {
+    background: linear-gradient(135deg, #6ec6a8 0%, #5ab394 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(110, 198, 168, 0.35);
+  }
+  .ctrl-btn.primary.recording {
+    background: linear-gradient(135deg, var(--red) 0%, #d35a3e 100%);
+    box-shadow: 0 4px 12px rgba(231, 111, 81, 0.35);
+    animation: pulse 1.2s infinite;
+  }
+  .ctrl-btn.secondary {
+    background: white; color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+  .ctrl-btn:active { transform: scale(0.96); }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 4px 12px rgba(231, 111, 81, 0.35); }
+    50%      { box-shadow: 0 4px 20px rgba(231, 111, 81, 0.6); }
+  }
+  .score-strip {
+    display: flex; gap: 8px; justify-content: space-between;
+    background: white; padding: 10px 14px; border-radius: 14px;
+    box-shadow: var(--shadow); font-size: 13px;
+  }
+  .score-strip .item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+  .score-strip .v { font-weight: 800; font-size: 18px; color: var(--ink); }
+  .score-strip .l { font-size: 11px; color: var(--ink-soft); }
+  .modal {
+    position: fixed; inset: 0; background: rgba(42, 36, 56, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(6px); z-index: 100;
+    animation: fadeIn 0.3s;
+  }
+  .modal.hidden { display: none; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal-card {
+    background: white; border-radius: 24px; padding: 28px 24px;
+    max-width: 340px; width: 90%; text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  }
+  .modal-card h2 { margin: 0 0 8px 0; font-size: 22px; }
+  .modal-card p  { color: var(--ink-soft); font-size: 14px; line-height: 1.6; margin: 0 0 20px 0; }
+  .modal-card button {
+    width: 100%; padding: 14px; border: none; border-radius: 14px;
+    background: linear-gradient(135deg, var(--gold) 0%, #e6a82e 100%);
+    color: white; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .note-picker {
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 8px;
+  }
+  .note-btn {
+    flex: 1; min-width: 56px; padding: 10px 6px; border-radius: 12px;
+    border: 2px solid transparent; background: white;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: all 0.15s;
+  }
+  .note-btn.active {
+    border-color: var(--gold); background: var(--gold-soft);
+    transform: scale(1.05);
+  }
+  .credit { font-size: 10px; color: var(--ink-soft); text-align: center; padding: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>🎵 视唱小课堂</h1>
+    <span class="badge">v0.1 spike</span>
+  </header>
+
+  <div class="target-card">
+    <div class="target-info">
+      <div class="target-label">跟唱这个音 →</div>
+      <div class="target-note" id="targetNote">do (C4)</div>
+      <div class="target-hz" id="targetHz">261.63 Hz</div>
+    </div>
+    <button class="play-btn" id="playBtn" title="播放标准音">▶</button>
+  </div>
+
+  <div class="note-picker" id="notePicker"></div>
+
+  <div id="stage">
+    <canvas id="canvas"></canvas>
+    <div class="stage-overlay">
+      <span class="pill" id="pillNote">--</span>
+      <span class="pill cents" id="pillCents">-- cents</span>
+    </div>
+    <div class="feedback-text" id="feedback" style="opacity: 0;">深呼吸，跟我唱～</div>
+  </div>
+
+  <div class="score-strip">
+    <div class="item"><span class="v" id="scoreNow">0</span><span class="l">当前分</span></div>
+    <div class="item"><span class="v" id="scoreBest">0</span><span class="l">最佳</span></div>
+    <div class="item"><span class="v" id="scoreStreak">0</span><span class="l">连续准 (帧)</span></div>
+    <div class="item"><span class="v" id="scoreFps">--</span><span class="l">检测 Hz</span></div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn secondary" id="resetBtn">🔄 重置</button>
+    <button class="ctrl-btn primary" id="micBtn">🎤 开始唱</button>
+  </div>
+
+  <div class="credit">Pitchy (YIN) · Web Audio API · Built tonight @ Haaland</div>
+</div>
+
+<div class="modal" id="welcome">
+  <div class="modal-card">
+    <h2>🎤 开始之前</h2>
+    <p>
+      我们需要使用你的麦克风<br>
+      听你唱歌的音高。<br><br>
+      <b>声音只在你的设备上分析</b>，<br>
+      不会上传到任何服务器。
+    </p>
+    <button id="welcomeOk">允许使用麦克风</button>
+  </div>
+</div>
+
+<script type="module">
+  import { PitchDetector } from 'https://esm.sh/pitchy@4.1.0';
+
+  // ---------- 音名表（一个八度 + 邻接） ----------
+  const NOTES = [
+    { name: 'do',  label: 'C4', hz: 261.63 },
+    { name: 're',  label: 'D4', hz: 293.66 },
+    { name: 'mi',  label: 'E4', hz: 329.63 },
+    { name: 'fa',  label: 'F4', hz: 349.23 },
+    { name: 'sol', label: 'G4', hz: 392.00 },
+    { name: 'la',  label: 'A4', hz: 440.00 },
+    { name: 'si',  label: 'B4', hz: 493.88 },
+    { name: 'do↑', label: 'C5', hz: 523.25 },
+  ];
+  let targetIdx = 0;
+  const targetNoteEl = document.getElementById('targetNote');
+  const targetHzEl   = document.getElementById('targetHz');
+  const notePickerEl = document.getElementById('notePicker');
+
+  function setTarget(idx) {
+    targetIdx = idx;
+    const t = NOTES[idx];
+    targetNoteEl.textContent = `${t.name} (${t.label})`;
+    targetHzEl.textContent = `${t.hz.toFixed(2)} Hz`;
+    [...notePickerEl.children].forEach((b, i) => b.classList.toggle('active', i === idx));
+    streak = 0; bestStreak = 0; updateScore();
+  }
+  NOTES.forEach((n, i) => {
+    const b = document.createElement('button');
+    b.className = 'note-btn';
+    b.textContent = n.name;
+    b.onclick = () => setTarget(i);
+    notePickerEl.appendChild(b);
+  });
+  setTarget(0);
+
+  // ---------- 标准音播放（Web Audio Oscillator） ----------
+  let audioCtx = null;
+  function ensureCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  document.getElementById('playBtn').onclick = () => {
+    const ctx = ensureCtx();
+    const t = NOTES[targetIdx];
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = t.hz;
+    // 平滑包络
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.25, now + 0.05);
+    gain.gain.linearRampToValueAtTime(0.25, now + 1.2);
+    gain.gain.linearRampToValueAtTime(0, now + 1.5);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.6);
+  };
+
+  // ---------- Pitch detection ----------
+  const BUFFER_SIZE = 2048;
+  let analyser = null, detector = null, sampleRate = 44100;
+  let micStream = null, sourceNode = null;
+  let buffer = new Float32Array(BUFFER_SIZE);
+  let isRecording = false;
+
+  // 检测频率统计
+  let detectCount = 0, detectStartT = 0;
+
+  async function startMic() {
+    try {
+      const ctx = ensureCtx();
+      sampleRate = ctx.sampleRate;
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        }
+      });
+      sourceNode = ctx.createMediaStreamSource(micStream);
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = BUFFER_SIZE;
+      sourceNode.connect(analyser);
+      detector = PitchDetector.forFloat32Array(BUFFER_SIZE);
+      detector.minVolumeDecibels = -40;
+      isRecording = true;
+      detectCount = 0; detectStartT = performance.now();
+      micBtn.textContent = '⏸ 停止';
+      micBtn.classList.add('recording');
+      showFeedback('开始唱～跟着 ' + NOTES[targetIdx].name, 1500);
+    } catch (e) {
+      alert('麦克风启动失败：' + e.message);
+    }
+  }
+  function stopMic() {
+    isRecording = false;
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
+    if (sourceNode) sourceNode.disconnect();
+    micStream = null; sourceNode = null; analyser = null;
+    micBtn.textContent = '🎤 开始唱';
+    micBtn.classList.remove('recording');
+  }
+
+  const micBtn = document.getElementById('micBtn');
+  micBtn.onclick = () => isRecording ? stopMic() : startMic();
+  document.getElementById('resetBtn').onclick = () => {
+    streak = 0; bestStreak = 0; bestScore = 0; trail = [];
+    updateScore();
+  };
+
+  // ---------- 评分（纯函数） ----------
+  function hzToCents(detected, target) {
+    if (!detected || detected <= 0) return null;
+    return 1200 * Math.log2(detected / target);
+  }
+  function gradeCents(absCents) {
+    if (absCents <= 10) return 'perfect';
+    if (absCents <= 25) return 'good';
+    if (absCents <= 50) return 'ok';
+    return 'miss';
+  }
+  function hzToNoteName(hz) {
+    if (!hz) return '--';
+    const midi = Math.round(12 * Math.log2(hz / 440) + 69);
+    const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+    return NAMES[((midi % 12) + 12) % 12] + (Math.floor(midi / 12) - 1);
+  }
+
+  // ---------- 状态 ----------
+  let lastHz = null, lastClarity = 0, lastCents = null, lastGrade = null;
+  let streak = 0, bestStreak = 0, bestScore = 0, currentScore = 0;
+  let trail = []; // [{x, y, grade, alpha}]
+
+  const pillNoteEl = document.getElementById('pillNote');
+  const pillCentsEl = document.getElementById('pillCents');
+  const scoreNowEl = document.getElementById('scoreNow');
+  const scoreBestEl = document.getElementById('scoreBest');
+  const scoreStreakEl = document.getElementById('scoreStreak');
+  const scoreFpsEl = document.getElementById('scoreFps');
+  const feedbackEl = document.getElementById('feedback');
+
+  let feedbackTimeout = null;
+  function showFeedback(txt, ms = 1200) {
+    feedbackEl.textContent = txt;
+    feedbackEl.style.opacity = 1;
+    clearTimeout(feedbackTimeout);
+    feedbackTimeout = setTimeout(() => feedbackEl.style.opacity = 0, ms);
+  }
+
+  function updateScore() {
+    scoreNowEl.textContent = currentScore;
+    scoreBestEl.textContent = bestScore;
+    scoreStreakEl.textContent = streak;
+  }
+
+  // ---------- 渲染 ----------
+  const canvas = document.getElementById('canvas');
+  const cctx = canvas.getContext('2d');
+  function resize() {
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+    cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  setTimeout(resize, 50);
+
+  // 频率 → Y 坐标（log scale，覆盖 100Hz - 1000Hz）
+  function hzToY(hz, h) {
+    const minLog = Math.log2(120);
+    const maxLog = Math.log2(900);
+    const r = (Math.log2(hz) - minLog) / (maxLog - minLog);
+    return h - r * (h - 40) - 20;
+  }
+
+  let breathePhase = 0;
+  function render() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    cctx.clearRect(0, 0, w, h);
+
+    // 背景渐变（场景隐喻雏形）
+    const grd = cctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, '#e8f4ff'); // 高音区天空
+    grd.addColorStop(0.5, '#fef8e8'); // 中音区阳光
+    grd.addColorStop(1, '#e0eef0'); // 低音区海面
+    cctx.fillStyle = grd;
+    cctx.fillRect(0, 0, w, h);
+
+    // 目标音能量带（呼吸）
+    breathePhase += 0.04;
+    const breathe = 0.7 + 0.3 * Math.sin(breathePhase);
+    const target = NOTES[targetIdx];
+    const targetY = hzToY(target.hz, h);
+    const bandHeight = Math.abs(hzToY(target.hz * Math.pow(2, 25/1200), h) - hzToY(target.hz * Math.pow(2, -25/1200), h));
+    cctx.fillStyle = `rgba(245, 197, 66, ${0.18 * breathe})`;
+    cctx.fillRect(0, targetY - bandHeight/2, w, bandHeight);
+    // perfect 区
+    const perfH = Math.abs(hzToY(target.hz * Math.pow(2, 10/1200), h) - hzToY(target.hz * Math.pow(2, -10/1200), h));
+    cctx.fillStyle = `rgba(245, 197, 66, ${0.35 * breathe})`;
+    cctx.fillRect(0, targetY - perfH/2, w, perfH);
+
+    // 目标音中心线
+    cctx.strokeStyle = 'rgba(230, 168, 46, 0.7)';
+    cctx.lineWidth = 1.5;
+    cctx.setLineDash([6, 6]);
+    cctx.beginPath(); cctx.moveTo(0, targetY); cctx.lineTo(w, targetY); cctx.stroke();
+    cctx.setLineDash([]);
+
+    // 标签
+    cctx.fillStyle = '#b8860b';
+    cctx.font = '600 12px system-ui';
+    cctx.fillText(`🎯 ${target.name}`, 10, targetY - 6);
+
+    // 全部音名标注（淡）
+    cctx.fillStyle = 'rgba(107, 100, 126, 0.4)';
+    cctx.font = '10px system-ui';
+    NOTES.forEach(n => {
+      if (n === target) return;
+      const y = hzToY(n.hz, h);
+      cctx.fillText(n.name, w - 28, y + 3);
+    });
+
+    // 历史轨迹
+    if (trail.length > 1) {
+      cctx.lineWidth = 3;
+      for (let i = 1; i < trail.length; i++) {
+        const a = trail[i-1], b = trail[i];
+        if (!a || !b) continue;
+        const alpha = a.alpha;
+        const color = a.grade === 'perfect' ? `rgba(245, 197, 66, ${alpha})` :
+                      a.grade === 'good'    ? `rgba(110, 198, 168, ${alpha})` :
+                      a.grade === 'ok'      ? `rgba(244, 162, 97, ${alpha})` :
+                                              `rgba(231, 111, 81, ${alpha * 0.6})`;
+        cctx.strokeStyle = color;
+        cctx.beginPath();
+        cctx.moveTo(a.x, a.y);
+        cctx.lineTo(b.x, b.y);
+        cctx.stroke();
+      }
+    }
+
+    // 当前音灵 (Sol)
+    if (lastHz && lastClarity > 0.85) {
+      const x = w - 60;
+      const y = hzToY(lastHz, h);
+      const glowColor = lastGrade === 'perfect' ? '#f5c542' :
+                        lastGrade === 'good'    ? '#6ec6a8' :
+                        lastGrade === 'ok'      ? '#f4a261' : '#e76f51';
+      // 外晕
+      const glowR = 22 + 6 * breathe + (lastGrade === 'perfect' ? 4 : 0);
+      const radial = cctx.createRadialGradient(x, y, 0, x, y, glowR);
+      radial.addColorStop(0, glowColor + 'cc');
+      radial.addColorStop(1, glowColor + '00');
+      cctx.fillStyle = radial;
+      cctx.beginPath(); cctx.arc(x, y, glowR, 0, Math.PI * 2); cctx.fill();
+      // 主体
+      cctx.fillStyle = glowColor;
+      cctx.beginPath(); cctx.arc(x, y, 10, 0, Math.PI * 2); cctx.fill();
+      // 眼睛
+      cctx.fillStyle = '#2a2438';
+      cctx.beginPath(); cctx.arc(x - 3, y - 1, 1.5, 0, Math.PI * 2); cctx.fill();
+      cctx.beginPath(); cctx.arc(x + 3, y - 1, 1.5, 0, Math.PI * 2); cctx.fill();
+      // 嘴
+      cctx.strokeStyle = '#2a2438'; cctx.lineWidth = 1.2;
+      cctx.beginPath();
+      if (lastGrade === 'perfect' || lastGrade === 'good') {
+        cctx.arc(x, y + 2, 2.5, 0, Math.PI);
+      } else {
+        cctx.arc(x, y + 4, 2.5, Math.PI, 0); // 反弧 = 困惑
+      }
+      cctx.stroke();
+
+      // perfect 粒子
+      if (lastGrade === 'perfect' && Math.random() < 0.3) {
+        trail.push({
+          x: x + (Math.random() - 0.5) * 30,
+          y: y + (Math.random() - 0.5) * 30,
+          grade: 'perfect', alpha: 0.6, particle: true
+        });
+      }
+    }
+
+    // 衰减 trail
+    trail.forEach(p => p.alpha *= 0.985);
+    trail = trail.filter(p => p.alpha > 0.05);
+    if (trail.length > 200) trail = trail.slice(-200);
+  }
+
+  // ---------- 主循环 ----------
+  let lastDetectTime = 0;
+  function loop() {
+    if (isRecording && analyser && detector) {
+      analyser.getFloatTimeDomainData(buffer);
+      const [pitch, clarity] = detector.findPitch(buffer, sampleRate);
+      lastClarity = clarity;
+      const now = performance.now();
+      if (clarity > 0.85 && pitch > 60 && pitch < 1500) {
+        lastHz = pitch;
+        const target = NOTES[targetIdx];
+        const cents = hzToCents(pitch, target.hz);
+        // 修正：取最近八度（用户唱低八度也算对）
+        let normCents = cents;
+        while (normCents > 600) normCents -= 1200;
+        while (normCents < -600) normCents += 1200;
+        lastCents = normCents;
+        lastGrade = gradeCents(Math.abs(normCents));
+
+        // 更新轨迹
+        const w = canvas.clientWidth;
+        const x = w - 60;
+        const y = hzToY(pitch, canvas.clientHeight);
+        trail.push({ x, y, grade: lastGrade, alpha: 1 });
+
+        // streak / score
+        if (lastGrade === 'perfect' || lastGrade === 'good') {
+          streak++;
+          bestStreak = Math.max(bestStreak, streak);
+          const pts = lastGrade === 'perfect' ? 3 : 1;
+          currentScore += pts;
+          if (currentScore > bestScore) bestScore = currentScore;
+
+          // 持续 1 秒（约 21 帧）满分触发提示
+          if (streak === 21 && lastGrade === 'perfect') {
+            showFeedback('✨ Perfect！再来一次试试 ' + NOTES[(targetIdx+1) % NOTES.length].name + '？', 2000);
+          } else if (streak === 10) {
+            showFeedback('稳住～就是这个感觉', 1000);
+          }
+        } else {
+          if (streak > 5 && lastGrade === 'ok') {
+            // 不打断
+          } else {
+            streak = 0;
+          }
+          if (lastGrade === 'miss') {
+            // 提示方向
+            if (now - lastDetectTime > 1500) {
+              const dir = normCents < 0 ? '高一点点' : '低一点点';
+              showFeedback(`再 ${dir}～你离 ${target.name} 还差 ${Math.round(Math.abs(normCents))} 音分`, 1200);
+              lastDetectTime = now;
+            }
+          }
+        }
+
+        pillNoteEl.textContent = `你: ${hzToNoteName(pitch)} (${pitch.toFixed(1)}Hz)`;
+        pillCentsEl.textContent = `${normCents > 0 ? '+' : ''}${normCents.toFixed(0)} cents`;
+        pillCentsEl.className = 'pill cents ' + lastGrade;
+
+        detectCount++;
+        if (detectCount % 20 === 0) {
+          const elapsed = (now - detectStartT) / 1000;
+          scoreFpsEl.textContent = (detectCount / elapsed).toFixed(1);
+        }
+        updateScore();
+      } else {
+        lastHz = null;
+        pillNoteEl.textContent = '听不清...';
+        pillCentsEl.textContent = '-- cents';
+        pillCentsEl.className = 'pill cents';
+      }
+    }
+    render();
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // ---------- Welcome ----------
+  document.getElementById('welcomeOk').onclick = () => {
+    document.getElementById('welcome').classList.add('hidden');
+  };
+</script>
+</body>
+</html>
