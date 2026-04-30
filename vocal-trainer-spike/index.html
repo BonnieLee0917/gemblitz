@@ -172,7 +172,10 @@
 <div id="app">
   <header>
     <h1>🎵 视唱小课堂</h1>
-    <span class="badge">v0.1 spike</span>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button id="toggleVoice" class="badge" style="border:none;cursor:pointer;" title="切换音域"><span id="voicePill">👤 选音域</span></button>
+      <span class="badge">v0.1.1</span>
+    </div>
   </header>
 
   <div class="target-card">
@@ -212,31 +215,50 @@
 
 <div class="modal" id="welcome">
   <div class="modal-card">
-    <h2>🎤 开始之前</h2>
+    <h2>🎤 你的声音是？</h2>
     <p>
-      我们需要使用你的麦克风<br>
-      听你唱歌的音高。<br><br>
-      <b>声音只在你的设备上分析</b>，<br>
-      不会上传到任何服务器。
+      选一下你的音域，我们会把 do re mi 的高度<br>
+      调整到你舒服的位置。<br><br>
+      <span style="font-size:11px;color:#a0a0a0">声音只在你的设备上分析，不上传任何服务器。</span>
     </p>
-    <button id="welcomeOk">允许使用麦克风</button>
+    <button id="pickMale" style="margin-bottom:10px;background:linear-gradient(135deg,#6ea8c6 0%,#5a93b0 100%);">👨 男声（do = G3）</button>
+    <button id="pickFemale" style="background:linear-gradient(135deg,#e6a8c6 0%,#d093b0 100%);">👩 女声（do = C4）</button>
   </div>
 </div>
 
 <script type="module">
   import { PitchDetector } from 'https://esm.sh/pitchy@4.1.0';
 
-  // ---------- 音名表（一个八度 + 邻接） ----------
-  const NOTES = [
-    { name: 'do',  label: 'C4', hz: 261.63 },
-    { name: 're',  label: 'D4', hz: 293.66 },
-    { name: 'mi',  label: 'E4', hz: 329.63 },
-    { name: 'fa',  label: 'F4', hz: 349.23 },
-    { name: 'sol', label: 'G4', hz: 392.00 },
-    { name: 'la',  label: 'A4', hz: 440.00 },
-    { name: 'si',  label: 'B4', hz: 493.88 },
-    { name: 'do↑', label: 'C5', hz: 523.25 },
+  // ---------- 首调唱名 + 男/女音域固定基准 ----------
+  // 大调音程比例：do=1, re=9/8, mi=5/4, fa=4/3, sol=3/2, la=5/3, si=15/8, do↑=2
+  const SOLFEGE = [
+    { name: 'do',  ratio: 1.0 },
+    { name: 're',  ratio: 9/8 },
+    { name: 'mi',  ratio: 5/4 },
+    { name: 'fa',  ratio: 4/3 },
+    { name: 'sol', ratio: 3/2 },
+    { name: 'la',  ratio: 5/3 },
+    { name: 'si',  ratio: 15/8 },
+    { name: 'do↑', ratio: 2.0 },
   ];
+  // 等程平均律修正（视唱训练用 12-TET 更标准）
+  const SEMITONES_FROM_DO = { 'do':0, 're':2, 'mi':4, 'fa':5, 'sol':7, 'la':9, 'si':11, 'do↑':12 };
+  const VOICE_PROFILES = {
+    male:   { label: '👨 男声', baseHz: 196.00, baseLabel: 'G3' },   // do = G3
+    female: { label: '👩 女声', baseHz: 261.63, baseLabel: 'C4' },   // do = C4
+  };
+  let voiceMode = localStorage.getItem('vt_voice') || null;
+  function getNoteHz(solfegeName) {
+    const base = VOICE_PROFILES[voiceMode || 'female'].baseHz;
+    return base * Math.pow(2, SEMITONES_FROM_DO[solfegeName] / 12);
+  }
+  function buildNotes() {
+    return SOLFEGE.map(s => {
+      const hz = getNoteHz(s.name);
+      return { name: s.name, label: hzToNoteName(hz), hz };
+    });
+  }
+  let NOTES = [];
   let targetIdx = 0;
   const targetNoteEl = document.getElementById('targetNote');
   const targetHzEl   = document.getElementById('targetHz');
@@ -250,14 +272,24 @@
     [...notePickerEl.children].forEach((b, i) => b.classList.toggle('active', i === idx));
     streak = 0; bestStreak = 0; updateScore();
   }
-  NOTES.forEach((n, i) => {
+  // 占位按钮（refreshNotes 会填名字）
+  SOLFEGE.forEach((n, i) => {
     const b = document.createElement('button');
     b.className = 'note-btn';
     b.textContent = n.name;
     b.onclick = () => setTarget(i);
     notePickerEl.appendChild(b);
   });
-  setTarget(0);
+  function refreshNotes() {
+    NOTES = buildNotes();
+    [...notePickerEl.children].forEach((b, i) => {
+      if (NOTES[i]) {
+        b.textContent = NOTES[i].name;
+        b.title = NOTES[i].label + ' (' + NOTES[i].hz.toFixed(1) + ' Hz)';
+      }
+    });
+    if (NOTES[targetIdx]) setTarget(targetIdx);
+  }
 
   // ---------- 标准音播放（Web Audio Oscillator） ----------
   let audioCtx = null;
@@ -595,9 +627,52 @@
   }
   loop();
 
-  // ---------- Welcome ----------
-  document.getElementById('welcomeOk').onclick = () => {
+  // ---------- Welcome + 音域选择 ----------
+  function pickVoice(mode) {
+    voiceMode = mode;
+    localStorage.setItem('vt_voice', mode);
+    refreshNotes();
     document.getElementById('welcome').classList.add('hidden');
+  }
+  document.getElementById('pickMale').onclick = () => pickVoice('male');
+  document.getElementById('pickFemale').onclick = () => pickVoice('female');
+  document.getElementById('toggleVoice').onclick = () => {
+    voiceMode = voiceMode === 'male' ? 'female' : 'male';
+    localStorage.setItem('vt_voice', voiceMode);
+    refreshNotes();
+    updateVoicePill();
+    showFeedback(`已切换到 ${VOICE_PROFILES[voiceMode].label}（do = ${VOICE_PROFILES[voiceMode].baseLabel}）`, 1500);
+  };
+  function updateVoicePill() {
+    const el = document.getElementById('voicePill');
+    if (!el) return;
+    el.textContent = voiceMode ? VOICE_PROFILES[voiceMode].label : '👤 选音域';
+  }
+
+  // 启动逻辑：有保存的 voiceMode 就跳过 welcome
+  if (voiceMode && VOICE_PROFILES[voiceMode]) {
+    document.getElementById('welcome').classList.add('hidden');
+  }
+  refreshNotes();
+  updateVoicePill();
+
+  // ---------- QA 注入接口 ----------
+  window.__vocalTrainerQA = {
+    hzToCents,
+    gradeCents,
+    hzToNoteName,
+    getNotes: () => NOTES,
+    setTarget: (idx) => setTarget(idx),
+    setVoice: (mode) => pickVoice(mode),
+    inject: (hz, clarity = 0.95) => {
+      lastHz = hz; lastClarity = clarity;
+      const t = NOTES[targetIdx];
+      lastCents = hzToCents(hz, t.hz);
+      let n = lastCents; while (n > 600) n -= 1200; while (n < -600) n += 1200;
+      lastCents = n; lastGrade = gradeCents(Math.abs(n));
+      return { detected: hz, target: t.hz, cents: n, grade: lastGrade };
+    },
+    version: '0.1.1',
   };
 </script>
 </body>
