@@ -314,7 +314,9 @@
   // ---------- 标准音播放（Web Audio Oscillator） ----------
   let audioCtx = null;
   function ensureCtx() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
@@ -383,6 +385,17 @@
     micBtn.classList.remove('recording');
     updateMicIndicator('off');
   }
+
+  async function disposeAudio() {
+    stopMic();
+    if (audioCtx && audioCtx.state !== 'closed') {
+      try { await audioCtx.close(); } catch {}
+    }
+    audioCtx = null;
+  }
+
+  window.addEventListener('pagehide', () => { disposeAudio(); });
+  window.addEventListener('beforeunload', () => { disposeAudio(); });
 
   const micBtn = document.getElementById('micBtn');
   micBtn.onclick = () => isRecording ? stopMic() : startMic();
