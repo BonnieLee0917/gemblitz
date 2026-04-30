@@ -223,11 +223,12 @@
 
 <div class="modal" id="welcome">
   <div class="modal-card">
-    <h2>🎤 你的声音是？</h2>
+    <h2>🎤 先选音区，再开始唱</h2>
     <p>
-      选一下你的音域，我们会把 do re mi 的高度<br>
+      选一下你的音区，我们会把 do re mi 的高度<br>
       调整到你舒服的位置。<br><br>
-      <span style="font-size:11px;color:#a0a0a0">声音只在你的设备上分析，不上传任何服务器。</span>
+      声音只在你的设备上分析，不上传任何服务器。<br>
+      如果点开始唱后没反应，我们会提示你检查麦克风权限。
     </p>
     <button id="pickMale" style="margin-bottom:10px;background:linear-gradient(135deg,#6ea8c6 0%,#5a93b0 100%);">👨 男声（do = C3）</button>
     <button id="pickFemale" style="background:linear-gradient(135deg,#e6a8c6 0%,#d093b0 100%);">👩 女声（do = C4）</button>
@@ -347,6 +348,7 @@
 
   // 检测频率统计
   let detectCount = 0, detectStartT = 0;
+  let selfCheckTimer = null;
 
   async function startMic() {
     try {
@@ -368,16 +370,24 @@
       isRecording = true;
       detectCount = 0; detectStartT = performance.now();
       lastVoiceTime = performance.now();
+      clearTimeout(selfCheckTimer);
+      selfCheckTimer = setTimeout(() => {
+        if (!isRecording) return;
+        if (performance.now() - lastVoiceTime < 1200) return;
+        showFeedback('如果没反应：检查麦克风权限，靠近设备，再唱一次？', 2800);
+      }, 2200);
       micBtn.textContent = '⏸ 停止';
       micBtn.classList.add('recording');
       updateMicIndicator('on');
       showFeedback('开始唱～跟着 ' + NOTES[targetIdx].name, 1500);
     } catch (e) {
+      showFeedback('麦克风没开成功：请允许权限后再试一次', 2600);
       alert('麦克风启动失败：' + e.message);
     }
   }
   function stopMic() {
     isRecording = false;
+    clearTimeout(selfCheckTimer);
     if (micStream) micStream.getTracks().forEach(t => t.stop());
     if (sourceNode) sourceNode.disconnect();
     micStream = null; sourceNode = null; analyser = null;
