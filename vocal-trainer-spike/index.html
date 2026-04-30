@@ -86,7 +86,7 @@
   .pill.cents { color: var(--ink-soft); }
   .pill.cents.perfect { color: #b8860b; background: rgba(245, 197, 66, 0.18); }
   .pill.cents.good    { color: #a88b2d; background: rgba(233, 217, 165, 0.22); }
-  .pill.cents.ok      { color: var(--gold-muted); background: rgba(184, 171, 138, 0.18); }
+  .pill.cents.close   { color: var(--gold-muted); background: rgba(184, 171, 138, 0.18); }
   .pill.cents.silence { color: var(--ink-soft); background: rgba(200, 196, 209, 0.2); }
   .mic-dot {
     display: inline-block; width: 8px; height: 8px; border-radius: 50%;
@@ -399,8 +399,8 @@
   function gradeCents(absCents) {
     if (absCents <= 10) return 'perfect';
     if (absCents <= 25) return 'good';
-    if (absCents <= 50) return 'ok';
-    return 'miss';
+    if (absCents <= 50) return 'close';
+    return 'try-again';
   }
   function hzToNoteName(hz) {
     if (!hz) return '--';
@@ -525,7 +525,7 @@
         const alpha = a.alpha;
         const color = a.grade === 'perfect' ? `rgba(245, 197, 66, ${alpha})` :
                       a.grade === 'good'    ? `rgba(233, 217, 165, ${alpha})` :
-                      a.grade === 'ok'      ? `rgba(184, 171, 138, ${alpha})` :
+                      a.grade === 'close'   ? `rgba(184, 171, 138, ${alpha})` :
                                               `rgba(157, 139, 104, ${alpha * 0.6})`;
         cctx.strokeStyle = color;
         cctx.beginPath();
@@ -541,7 +541,7 @@
       const y = hzToY(lastHz, h);
       const glowColor = lastGrade === 'perfect' ? '#f5c542' :
                         lastGrade === 'good'    ? '#e9d9a5' :
-                        lastGrade === 'ok'      ? '#b8ab8a' : '#9d8b68';
+                        lastGrade === 'close'   ? '#b8ab8a' : '#9d8b68';
       // 外晕
       const glowR = 22 + 6 * breathe + (lastGrade === 'perfect' ? 4 : 0);
       const radial = cctx.createRadialGradient(x, y, 0, x, y, glowR);
@@ -615,7 +615,7 @@
         const y = hzToY(pitch, canvas.clientHeight);
         trail.push({ x, y, grade: lastGrade, alpha: 1 });
 
-        // streak 处理：只有真 miss 才清零；ok 不中断；silence 不在这里走
+        // streak 处理：只有真 try-again 才清零；close 不中断；silence 不在这里走
         if (lastGrade === 'perfect' || lastGrade === 'good') {
           streak++;
           bestStreak = Math.max(bestStreak, streak);
@@ -630,11 +630,11 @@
           } else if (streak === 10) {
             showFeedback('稳住～就是这个感觉', 1000);
           }
-        } else if (lastGrade === 'ok') {
-          // ok 不加分但不打断 streak
+        } else if (lastGrade === 'close') {
+          // close 不加分但不打断 streak
           lastVoiceTime = now;
-        } else if (lastGrade === 'miss') {
-          // 只有真的 miss 才清 streak
+        } else if (lastGrade === 'try-again') {
+          // 只有真的 try-again 才清 streak
           streak = 0;
           if (now - lastDetectTime > 1500) {
             const dir = normCents < 0 ? '高一点点' : '低一点点';
